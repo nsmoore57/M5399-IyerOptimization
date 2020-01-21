@@ -35,14 +35,21 @@ arctan1d = (lambda x: np.arctan(x - np.pi/4))
 
 def test_NewtonsMethod():
     """Test Newton.Newton function"""
+    x0 = np.array([10])
+    tao = 10**(-5)
+    c = 10*(-6)
+    tol = 10**(-6)
+    kmax = 1000
+    assert arctan1d(Newton.Newton(arctan1d, x0, tao, c, tol, kmax)) < tol
+
     x0 = np.array([[1], [1]])
     tao = 10**(-5)
     c = 10*(-6)
     tol = 10**(-6)
     kmax = 1000
-    assert Newton.Newton(Rosenbrock1, x0, tao, c, tol, kmax) is None
-    assert Newton.Newton(Rosenbrock2, x0, tao, c, tol, kmax) is None
-    assert Newton.Newton(Rosenbrock3, x0, tao, c, tol, kmax) is None
+    # assert Newton.Newton(Rosenbrock1, x0, tao, c, tol, kmax) is None
+    # assert Newton.Newton(Rosenbrock2, x0, tao, c, tol, kmax) is None
+    # assert Newton.Newton(Rosenbrock3, x0, tao, c, tol, kmax) is None
 
 def test_GradDescent():
     """Test Newton.GradDescent function"""
