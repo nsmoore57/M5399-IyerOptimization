@@ -53,8 +53,25 @@ def GradDescent(f, x0, tol, kmax):
     return xnew
 
 def _CentralDifferences(f,x,tao):
+    """
+    Calculates an approximation to the Jacobian based on Central Differences:
+    -------------------------------------------------------------------------
+    f: function to approximate the Jacobian of
+    x: the point to approximate the Jacobian around
+    tao: 2*tao is the length of secant line between central difference points
+    
+    H(:,i) = 1/(2tao) (f(x + tao*ei) - f(x - tao*ei))
+    
+    TODO: Rewrite to only perturb one coord at a time instead of adding bunch of zeros
+    """
     H = np.eye(x.shape[0])
+    f_x = f(x)
     for i in range(x.shape[0]):
-        H[:,i] = 1/(2*tao)*(f(x + tao*H[:,i]) - f(x - tao*H[:,i]))
+        xhigh = x.copy()
+        xlow = x.copy()
+        xhigh[i] = xhigh[i] + tao
+        xlow[i] = xlow[i] - tao
+        
+        H[:,i] = 1/(2*tao)*(f(xhigh) - f(xlow))
     return H
 
