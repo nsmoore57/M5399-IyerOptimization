@@ -47,10 +47,10 @@ def test_NewtonsMethod():
     tao = 10**(-5)
     c = 0.5
     tol = 10**(-1)
-    kmax = 1000
+    kmax = 100000
     assert LA.norm(Rosenbrock1(Newton.Newton(Rosenbrock1, x0, tao, c, tol, kmax))) < tol
-    assert LA.norm(Rosenbrock1(Newton.Newton(Rosenbrock2, x0, tao, c, tol, kmax))) < tol
-    assert LA.norm(Rosenbrock1(Newton.Newton(Rosenbrock3, x0, tao, c, tol, kmax))) < tol
+    assert LA.norm(Rosenbrock2(Newton.Newton(Rosenbrock2, x0, tao, c, tol, kmax))) < tol
+    assert LA.norm(Rosenbrock3(Newton.Newton(Rosenbrock3, x0, tao, c, tol, kmax))) < tol
 
 def test_GradDescent():
     """Test Newton.GradDescent function"""

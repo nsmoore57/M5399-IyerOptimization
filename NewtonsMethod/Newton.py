@@ -152,21 +152,22 @@ def _CentralDifferences(f, x, tao):
         H[:, i] = (1/(2*tao)*(f(xhigh) - f(xlow))).flatten()
     return H
 
-if __name__ == "__main__":
-    def Grad_Rosenbrock(a, x):
-        """
-        Gradient of the Rosenbrock function
-        Used for obtaining the mininum of the Rosenbrock
-        """
-        dfdx1 = -2*(a-x[0]) - 400*(x[1]-x[0]**2)*x[0]
-        dfdx2 = 200*(x[1]-x[0]**2)
-        return np.vstack((dfdx1, dfdx2))
+# if __name__ == "__main__":
+#     def Grad_Rosenbrock(a, x):
+#         """
+#         Gradient of the Rosenbrock function
+#         Used for obtaining the mininum of the Rosenbrock
+#         """
+#         dfdx1 = -2*(a-x[0]) - 400*(x[1]-x[0]**2)*x[0]
+#         dfdx2 = 200*(x[1]-x[0]**2)
+#         return np.vstack((dfdx1, dfdx2))
 
-    Rosenbrock2 = (lambda x: Grad_Rosenbrock(2, x))
+#     Rosenbrock1 = (lambda x: Grad_Rosenbrock(1, x))
+#     Rosenbrock2 = (lambda x: Grad_Rosenbrock(2, x))
 
-    x0 = np.array([[3], [3]], dtype="float")
-    tao = 10**(-5)
-    c = 0.5
-    tol = 10**(-4)
-    kmax = 1000
-    print(Newton(Rosenbrock2, x0, tao, c, tol, kmax))
+#     x0 = np.array([[3], [3]], dtype="float")
+#     tao = 10**(-5)
+#     c = 0.5
+#     tol = 10**(-1)
+#     kmax = 100000
+#     print(LA.norm(Rosenbrock1(Newton(Rosenbrock1, x0, tao, c, tol, kmax))))
