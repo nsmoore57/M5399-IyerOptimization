@@ -5,8 +5,32 @@ import numpy as np
 
 def Newton(f, x0, tao, c, tol, kmax):
     """
-    Run Newton's Rootfinding method to find the zero of f
+    Run Newton's Rootfinding method to find the the location of a zero of f
+
+    Uses a central difference approximation to the Jacobian.
+    Step size determined by the method in Stoer and Bulirsch.
+    Also performs a regularization of the Jacobian if Central Difference Approx is singular
+
+    Input Arguments:
+    f    -- The function of which to find the zero
+    x0   -- Initial guess for zero
+            - the closer the actual zero the better
+    tao  -- Perturbation size for Central Difference Approx to Jacobian
+            - usually around 10**(-6)
+    c    -- Constant between 0 and 1, used to determine step sizes
+            - usually 0.5
+    tol  -- Error tolerance for stopping condition
+    kmax -- Maximum steps allowed, used for stopping condition
+
+    Example:
+    x0 = np.array([10], dtype="float")
+    tao = 10**(-5)
+    c = 0.5
+    tol = 10**(-4)
+    kmax = 1000
+    print(Newton((lambda x: np.arctan(x-np.pi/4)), x0, tao, c, tol, kmax))
     """
+
     k = 1
     s = LA.norm(f(x0))**2
     xk = x0.copy() # We don't want to change x0 from the outside scope
@@ -58,7 +82,26 @@ def Newton(f, x0, tao, c, tol, kmax):
     return xk
 
 def GradDescent(f, x0, tol, kmax):
-    """Run Gradient Descent to find the zero of f"""
+    """
+    Run Gradient Descent to find the location of a zero of f
+    Uses a central difference approximation to the Jacobian.
+    Step size determined by the method in Stoer and Bulirsch.
+    Also performs a regularization of the Jacobian if Central Difference Approx is singular
+
+    Input Arguments:
+    f    -- The function of which to find the zero
+    x0   -- Initial guess for zero
+            - the closer the actual zero the better
+    tol  -- Error tolerance for stopping condition
+    kmax -- Maximum steps allowed, used for stopping condition
+
+    Example:
+    x0 = np.array([10], dtype="float")
+    tol = 10**(-4)
+    kmax = 1000
+    print(GradDescent((lambda x: np.arctan(x-np.pi/4)), x0, tol, kmax))
+    """
+
     k = 1
     xold = np.zeros(x0.shape)
     xnew = x0
@@ -87,14 +130,19 @@ def GradDescent(f, x0, tol, kmax):
 def _CentralDifferences(f, x, tao):
     """
     Calculates an approximation to the Jacobian based on Central Differences:
-    -------------------------------------------------------------------------
-    f: function to approximate the Jacobian of
-    x: the point to approximate the Jacobian around
-    tao: 2*tao is the length of secant line between central difference points
+
+
+    Input Arguments:
+    f    -- function to approximate the Jacobian from
+    x    -- The point to approximate the Jacobian around
+    tao  -- 2*taco is length of the secant line between central difference points
 
     H(:,i) = 1/(2tao) (f(x + tao*ei) - f(x - tao*ei))
     """
-    H = np.empty((x.shape[0], x.shape[0]))
+
+    # Preallocate a matrix
+    H = np.empty((x.shape[0], x.shape[0]), dtype="float")
+
     for i in range(x.shape[0]):
         xhigh = x.copy()
         xlow = x.copy()
@@ -116,17 +164,9 @@ if __name__ == "__main__":
 
     Rosenbrock2 = (lambda x: Grad_Rosenbrock(2, x))
 
-    def arctan2d(x):
-        """
-        2D arctan function for testing GradDescent
-        """
-        res1 = np.arctan(x[0] - np.pi/4)
-        res2 = np.arctan(x[1] - np.pi/4)
-        return np.vstack((res1, res2))
-
-    x0 = np.array([[8], [8]], dtype="float")
+    x0 = np.array([[3], [3]], dtype="float")
     tao = 10**(-5)
     c = 0.5
     tol = 10**(-4)
-    kmax = 100000
+    kmax = 1000
     print(Newton(Rosenbrock2, x0, tao, c, tol, kmax))
