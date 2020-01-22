@@ -24,7 +24,7 @@ def Newton(f, x0, tao, c, tol, kmax):
             theta = 10**(-7)
             dk = LA.solve(H + theta*np.eye(xk.shape[0]), -f(xk))
 
-        z = c*LA.norm(f(xk).transpose()*H)*LA.norm(dk)
+        z = c*LA.norm(np.matmul(f(xk).transpose(),H))*LA.norm(dk)
 
         # Solve the step size using the method by Stoer and Bulirsch
         j = 0
@@ -34,7 +34,7 @@ def Newton(f, x0, tao, c, tol, kmax):
         index = 0
         while L > R:
             j += 1
-            L = LA.norm(f(xk + 2**(-j)))**2
+            L = LA.norm(f(xk + 2**(-j)*dk))**2
             R = s - 2**(-j)*z
             if L < Lmin:
                 Lmin = L
@@ -51,7 +51,8 @@ def Newton(f, x0, tao, c, tol, kmax):
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
         print("k exceeded kmax, can't trust answer")
-        return None
+        return xk
+        # return None
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk
@@ -113,7 +114,7 @@ if __name__ == "__main__":
         dfdx2 = 200*(x[1]-x[0]**2)
         return np.vstack((dfdx1, dfdx2))
 
-    Rosenbrock1 = (lambda x: Grad_Rosenbrock(1, x))
+    Rosenbrock2 = (lambda x: Grad_Rosenbrock(2, x))
 
     def arctan2d(x):
         """
@@ -123,9 +124,9 @@ if __name__ == "__main__":
         res2 = np.arctan(x[1] - np.pi/4)
         return np.vstack((res1, res2))
 
-    x0 = np.array([[1.01], [1.01]], dtype="float")
+    x0 = np.array([[8], [8]], dtype="float")
     tao = 10**(-5)
     c = 0.5
-    tol = 10**(-2)
+    tol = 10**(-4)
     kmax = 100000
-    print(Newton(Rosenbrock1, x0, tao, c, tol, kmax))
+    print(Newton(Rosenbrock2, x0, tao, c, tol, kmax))
