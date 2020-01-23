@@ -21,6 +21,8 @@ def Newton(f, x0, tao, c, tol, kmax):
             - usually 0.5
     tol  -- Error tolerance for stopping condition
     kmax -- Maximum steps allowed, used for stopping condition
+    
+    Returns coordinates, x, such that norm_2(f(x)) < tol if found, None otherwise
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -32,23 +34,29 @@ def Newton(f, x0, tao, c, tol, kmax):
     """
 
     k = 1
-    s = LA.norm(f(x0))**2
+    
     xk = x0.copy() # We don't want to change x0 from the outside scope
+    
+    # Cache for f(xk) in case the calculation is expensive
+    #  - Should save 2-3 function evaluations per outside loop iteration
+    f_xk = f(xk)
+    
+    s = LA.norm(f_xk)**2
 
     while np.sqrt(s) > tol and k < kmax:
         # Build the Jacobian matrix approximation using Central Differences
         H = _CentralDifferences(f, xk, tao)
-
+        
         try:
             # Uses LAPACK _gesv to solve H*dk = -f(xk)
-            dk = LA.solve(H, -f(xk))
+            dk = LA.solve(H, -f_xk)
         except LA.LinAlgError:
             # Most likely here because the above H is singular
             # Therefore we regularize by adding a small (10^-7) multiple of I:
             theta = 10**(-7)
-            dk = LA.solve(H + theta*np.eye(xk.shape[0]), -f(xk))
+            dk = LA.solve(H + theta*np.eye(xk.shape[0]), -f_xk)
 
-        z = c*LA.norm(np.matmul(f(xk).transpose(),H))*LA.norm(dk)
+        z = c*LA.norm(np.matmul(f_xk.transpose(),H))*LA.norm(dk)
 
         # Solve the step size using the method by Stoer and Bulirsch
         j = 0
@@ -64,19 +72,22 @@ def Newton(f, x0, tao, c, tol, kmax):
                 Lmin = L
                 index = j
 
-        # print("dk = " + str(dk))
-        # print("index = " + str(index))
         # Update xk
         xk = xk + 2**(-index)*dk
-        # print("xk = " + str(xk))
+
         k += 1
-        s = LA.norm(f(xk))**2
+        
+        # Cache the new f(xk)
+        f_xk = f(xk)
+        
+        s = LA.norm(f_xk)**2
 
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
-        print("k exceeded kmax, can't trust answer")
-        return xk
-        # return None
+        # For debugging purposes
+        # print("k exceeded kmax, can't trust answer")
+        # return xk   
+        return None
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk
@@ -94,6 +105,8 @@ def GradDescent(f, x0, tol, kmax):
             - the closer the actual zero the better
     tol  -- Error tolerance for stopping condition
     kmax -- Maximum steps allowed, used for stopping condition
+    
+    Returns coordinates, x, such that norm_2(f(x)) < tol if found, None otherwise
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -121,16 +134,18 @@ def GradDescent(f, x0, tol, kmax):
 
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
-        print("k exceeded kmax, can't trust answer")
+        # For debugging purposes
+        # print("k exceeded kmax, can't trust answer")
+        # return xk      
         return None
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xnew
 
+# Not exported with Module
 def _CentralDifferences(f, x, tao):
     """
     Calculates an approximation to the Jacobian based on Central Differences:
-
 
     Input Arguments:
     f    -- function to approximate the Jacobian from
@@ -152,6 +167,7 @@ def _CentralDifferences(f, x, tao):
         H[:, i] = (1/(2*tao)*(f(xhigh) - f(xlow))).flatten()
     return H
 
+# Testing from module load
 # if __name__ == "__main__":
 #     def Grad_Rosenbrock(a, x):
 #         """
