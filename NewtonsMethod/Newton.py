@@ -3,7 +3,7 @@
 import numpy.linalg as LA
 import numpy as np
 
-def Newton(f, x0, tao, c, tol, kmax):
+def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
     """
     Run Newton's Rootfinding method to find the the location of a zero of f
 
@@ -12,24 +12,24 @@ def Newton(f, x0, tao, c, tol, kmax):
     Also performs a regularization of the Jacobian if Central Difference Approx is singular
 
     Input Arguments:
-    f    -- The function of which to find the zero
-    x0   -- Initial guess for zero
-            - the closer the actual zero the better
-    tao  -- Perturbation size for Central Difference Approx to Jacobian
-            - usually around 10**(-6)
-    c    -- Constant between 0 and 1, used to determine step sizes
-            - usually 0.5
-    tol  -- Error tolerance for stopping condition
-    kmax -- Maximum steps allowed, used for stopping condition
+    f         -- The function of which to find the zero
+    x0        -- Initial guess for zero
+                 - the closer the actual zero the better
+    tol       -- Error tolerance for stopping condition
+    kmax      -- Maximum steps allowed, used for stopping condition
+    c         -- Constant between 0 and 1, used to determine step sizes
+    tao       -- Perturbation size for Central Difference Approx to Jacobian
+    reg_const -- Perturbation to add to Central Difference Jacobian to regularize
+                 in the case that the Jacobian is singular
     
     Returns coordinates, x, such that norm_2(f(x)) < tol if found, None otherwise
 
     Example:
     x0 = np.array([10], dtype="float")
-    tao = 10**(-5)
+    tao = 1e-5
     c = 0.5
-    tol = 10**(-4)
-    kmax = 1000
+    tol = 1e-4
+    kmax = 1e3
     print(Newton((lambda x: np.arctan(x-np.pi/4)), x0, tao, c, tol, kmax))
     """
 
@@ -52,8 +52,8 @@ def Newton(f, x0, tao, c, tol, kmax):
             dk = LA.solve(H, -f_xk)
         except LA.LinAlgError:
             # Most likely here because the above H is singular
-            # Therefore we regularize by adding a small (10^-7) multiple of I:
-            theta = 10**(-7)
+            # Therefore we regularize by adding a small (1e-7) multiple of I:
+            theta = 1e-7
             dk = LA.solve(H + theta*np.eye(xk.shape[0]), -f_xk)
 
         z = c*LA.norm(np.matmul(f_xk.transpose(),H))*LA.norm(dk)
@@ -92,7 +92,7 @@ def Newton(f, x0, tao, c, tol, kmax):
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk
 
-def GradDescent(f, x0, tol, kmax):
+def GradDescent(f, x0, tol, kmax, step_method="BB"):
     """
     Run Gradient Descent to find the location of a zero of f
     Uses a central difference approximation to the Jacobian.
@@ -100,20 +100,25 @@ def GradDescent(f, x0, tol, kmax):
     Also performs a regularization of the Jacobian if Central Difference Approx is singular
 
     Input Arguments:
-    f    -- The function of which to find the zero
-    x0   -- Initial guess for zero
-            - the closer the actual zero the better
-    tol  -- Error tolerance for stopping condition
-    kmax -- Maximum steps allowed, used for stopping condition
+    f           -- The function of which to find the zero
+    x0          -- Initial guess for zero
+                   - the closer the actual zero the better
+    tol         -- Error tolerance for stopping condition
+    kmax        -- Maximum steps allowed, used for stopping condition
+    step_method -- Method for determining step size:
+                   - Allowed methods: BB  - Barzilai-Borwein Method (default)
+                                      ILS - Inexact Line Search
     
     Returns coordinates, x, such that norm_2(f(x)) < tol if found, None otherwise
 
     Example:
     x0 = np.array([10], dtype="float")
-    tol = 10**(-4)
+    tol = 1e-4
     kmax = 1000
     print(GradDescent((lambda x: np.arctan(x-np.pi/4)), x0, tol, kmax))
     """
+    
+    # TODO: Implement inexact line search - see the ILS branch below
 
     k = 1
     xold = np.zeros(x0.shape)
@@ -124,7 +129,13 @@ def GradDescent(f, x0, tol, kmax):
         dnew = -f(xnew)
 
         # Step size
-        gamma = abs(np.matmul((xnew - xold).transpose(), -dnew + dold))/LA.norm(-dnew+dold)**2
+        if step_method == "BB":
+            gamma = np.matmul((xnew - xold).transpose(), -dnew + dold)/LA.norm(-dnew+dold)**2
+        elif step_method == "ILS":
+            # TODO: Implement this - maybe use a helper function
+        else:
+            # This is an unknown method
+            return None
 
         # Reset all old values to avoid evaluating f more times than necessary
         xold = xnew
@@ -182,8 +193,8 @@ def _CentralDifferences(f, x, tao):
 #     Rosenbrock2 = (lambda x: Grad_Rosenbrock(2, x))
 
 #     x0 = np.array([[3], [3]], dtype="float")
-#     tao = 10**(-5)
+#     tao = 1e-5
 #     c = 0.5
-#     tol = 10**(-1)
-#     kmax = 100000
+#     tol = 1e-1
+#     kmax = 1e5
 #     print(LA.norm(Rosenbrock1(Newton(Rosenbrock1, x0, tao, c, tol, kmax))))

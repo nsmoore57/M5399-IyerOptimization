@@ -1,17 +1,10 @@
 #!/usr/bin/env python
-"""This script tests the code in Newton.py"""
+"""This script tests the exported functions in Newton.py"""
 
 import numpy as np
 import numpy.linalg as LA
 import Newton
 
-def Rosenbrock(a, x):
-    """
-    Function for testing optimization, vector-valued to repeat same value
-    in both dimensions
-    """
-    res = (a - x[0])**2 + 100*(x[1]-x[0]**2)**2
-    return np.array([res, res])
 def Grad_Rosenbrock(a, x):
     """
     Gradient of the Rosenbrock function
@@ -37,24 +30,29 @@ arctan1d = (lambda x: np.arctan(x - np.pi/4))
 def test_NewtonsMethod():
     """Test Newton.Newton function"""
     x0 = np.array([2], dtype="float")
-    tao = 10**(-5)
-    c = 0.5
-    tol = 10**(-6)
-    kmax = 1000
-    assert arctan1d(Newton.Newton(arctan1d, x0, tao, c, tol, kmax)) < tol
+    tao = 1e-5
+    c = 0.7
+    tol = 1e-6
+    kmax = 6
+    assert arctan1d(Newton.Newton(arctan1d, x0, tol, kmax)) < tol  # Check with default arguments
+    assert arctan1d(Newton.Newton(arctan1d, x0, tol, kmax, c, tao)) < tol
 
     x0 = np.array([[3], [3]], dtype="float")
-    tao = 10**(-5)
-    c = 0.5
-    tol = 10**(-1)
-    kmax = 100000
-    assert LA.norm(Rosenbrock1(Newton.Newton(Rosenbrock1, x0, tao, c, tol, kmax))) < tol
-    assert LA.norm(Rosenbrock2(Newton.Newton(Rosenbrock2, x0, tao, c, tol, kmax))) < tol
-    assert LA.norm(Rosenbrock3(Newton.Newton(Rosenbrock3, x0, tao, c, tol, kmax))) < tol
+    tao = 1e-5
+    c = 0.7
+    tol = 1e-6
+    kmax = 1e5
+    assert LA.norm(Rosenbrock1(Newton.Newton(Rosenbrock1, x0, tol, kmax))) < tol # Check with default arguments
+    assert LA.norm(Rosenbrock1(Newton.Newton(Rosenbrock1, x0, tol, kmax, c, tao))) < tol
+    assert LA.norm(Rosenbrock2(Newton.Newton(Rosenbrock2, x0, tol, kmax, c, tao))) < tol
+    assert LA.norm(Rosenbrock3(Newton.Newton(Rosenbrock3, x0, tol, kmax, c, tao))) < tol
 
 def test_GradDescent():
     """Test Newton.GradDescent function"""
-    tol = 10**(-6)
-    kmax = 1000
+    tol = 1e-6
+    kmax = 1e3
     assert LA.norm(arctan1d(Newton.GradDescent(arctan1d, np.array([10]), tol, kmax))) < tol
     assert LA.norm(arctan2d(Newton.GradDescent(arctan2d, np.array([[10], [10]]), tol, kmax))) < tol
+    assert LA.norm(Rosenbrock1(Newton.GradDescent(Rosenbrock1, np.array([[3], [3]]), tol, kmax))) < tol
+    assert LA.norm(Rosenbrock2(Newton.GradDescent(Rosenbrock2, np.array([[3], [3]]), tol, kmax))) < tol
+    assert LA.norm(Rosenbrock3(Newton.GradDescent(Rosenbrock3, np.array([[3], [3]]), tol, kmax))) < tol
