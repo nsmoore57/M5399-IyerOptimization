@@ -51,8 +51,8 @@ def test_GradDescent():
     """Test Newton.GradDescent function"""
     tol = 1e-6
     kmax = 1e3
-    assert LA.norm(arctan1d(Newton.GradDescent(arctan1d, np.array([10]), tol, kmax))) < tol
-    assert LA.norm(arctan2d(Newton.GradDescent(arctan2d, np.array([[10], [10]]), tol, kmax))) < tol
-    assert LA.norm(Rosenbrock1(Newton.GradDescent(Rosenbrock1, np.array([[3], [3]]), tol, kmax))) < tol
-    assert LA.norm(Rosenbrock2(Newton.GradDescent(Rosenbrock2, np.array([[3], [3]]), tol, kmax))) < tol
-    assert LA.norm(Rosenbrock3(Newton.GradDescent(Rosenbrock3, np.array([[3], [3]]), tol, kmax))) < tol
+    assert LA.norm(arctan1d(Newton.GradDescent_BB(arctan1d, np.array([10]), tol, kmax))) < tol
+    assert LA.norm(arctan2d(Newton.GradDescent_BB(arctan2d, np.array([[10], [10]]), tol, kmax))) < tol
+    assert LA.norm(Rosenbrock1(Newton.GradDescent_BB(Rosenbrock1, np.array([[3], [3]]), tol, kmax))) < tol
+    assert LA.norm(Rosenbrock2(Newton.GradDescent_BB(Rosenbrock2, np.array([[3], [3]]), tol, kmax))) < tol
+    assert LA.norm(Rosenbrock3(Newton.GradDescent_BB(Rosenbrock3, np.array([[3], [3]]), tol, kmax))) < tol
