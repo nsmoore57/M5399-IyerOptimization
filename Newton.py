@@ -111,7 +111,7 @@ def GradDescent_BB(f, x0, tol, kmax):
     x0 = np.array([10], dtype="float")
     tol = 1e-4
     kmax = 1000
-    print(GradDescent((lambda x: np.arctan(x-np.pi/4)), x0, tol, kmax))
+    print(GradDescent_BB((lambda x: np.arctan(x-np.pi/4)), x0, tol, kmax))
     """
 
     k = 1
@@ -165,10 +165,22 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     Returns coordinates, x, of the minimum (where grad q = 0) if found within tolerance, otherwise None
 
     Example:
-    x0 = np.array([10], dtype="float")
+    def Rosenbrock2(x):
+        return (2-x[0])**2 + 100*(x[1]-x[0]**2)**2
+    def GRosenbrock2(x):
+        dfdx1 = -2*(2-x[0]) - 400*(x[1]-x[0]**2)*x[0]
+        dfdx2 = 200*(x[1]-x[0]**2)
+        return np.vstack((dfdx1, dfdx2))
+
+    x0 = np.array([[3], [3]], dtype="float")
     tol = 1e-4
-    kmax = 1000
-    print(GradDescent((lambda x: np.arctan(x-np.pi/4)), x0, tol, kmax))
+    kmax = 50000
+    a_low = 1e-9
+    a_high = 0.7
+    N = 20
+    CD_tao = 1e-5
+
+    print(GradDescent_ILS(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
     """
 
     # Use CentralDifferences to approximate the gradient
@@ -192,22 +204,25 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     q_cache = q(xk)
 
     # Alpha grid for step size search
-    alpha = np.linspace(a_low, a_high, N, endpoint=True)
+    alpha = np.logspace(np.log10(a_low), np.log10(a_high), N, endpoint=True)
 
-    while LA.norm(gq_cache) > tol*(1 + np.abs(q(xk))) and k < kmax:
+    while LA.norm(gq_cache) > tol*(1 + np.abs(q_cache)) and k < kmax:
         # Track minimum phi value in the grid
         phimin = None
         imin = None
 
+        # Move along the direction of the gradient, testing q at each grid point
         for i in range(N):
-            phi = q(xk - alpha[i]*gq_cache/LA.norm(gq_cache))
+            phi = q(xk - alpha[i]*gq_cache/LA.norm(gq_cache)) - q_cache
+
+            # Want the minimum phi value
             if phimin == None or phi < phimin:
                 phimin = phi
                 imin = i
 
         # Not good, probably a step size issue
-        if phimin > q_cache:
-            print("No more steps to take downward, don't trust answer.  Consider increasing N")
+        if phimin > 0:
+            print("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
             return xk
 
         # Update xk
@@ -217,6 +232,119 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
 
         # Cache new values
         gq_cache = gradq(xk)
+        q_cache = q(xk)
+
+        # Increase iteration count
+        k += 1
+
+    # If kmax gets exceeded, we can't trust the answer so return None
+    if k >= kmax:
+        # For debugging purposes
+        print("k exceeded kmax, can't trust answer")
+        return xk
+        # return None
+
+    # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
+    return xk
+
+def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_low=0.1, c_high=0.9, CD_tao = 1e-6):
+    """
+    Run Gradient Descent to find the location of a zero of f
+    Uses a central difference approximation to the Jacobian.
+    Step size determined by the Armijo condition
+
+    Input Arguments:
+    q           -- The function of which to find the mininum
+    gradq       -- The gradient of q - use "CD" for Central Difference Approx
+    x0          -- Initial guess for zero
+                   - the closer the actual zero the better
+    tol         -- Error tolerance for stopping condition
+    kmax        -- Maximum steps allowed, used for stopping condition
+    a_low       -- Proportion of gradient direction for low end of search
+    a_high      -- Proportion of gradient direction for high end of search
+    N           -- Number of points in logarthmic grid between a_low and a_high
+                   - Lower is faster but less accurate
+    c_low       -- Proportion of slope for low end of allowed step sizes
+    c_high      -- Proportion of slope for high end of allowed step sizes
+    CD_tao      -- Perturbation of x for approximation of gradient using CD
+                   -- Ignored if gradq != "CD"
+
+    Returns coordinates, x, of the minimum (where grad q = 0) if found within tolerance, otherwise None
+
+    Example:
+    def Rosenbrock2(x):
+        return (2-x[0])**2 + 100*(x[1]-x[0]**2)**2
+    def GRosenbrock2(x):
+        dfdx1 = -2*(2-x[0]) - 400*(x[1]-x[0]**2)*x[0]
+        dfdx2 = 200*(x[1]-x[0]**2)
+        return np.vstack((dfdx1, dfdx2))
+
+    x0 = np.array([[3], [3]], dtype="float")
+    tol = 1e-4
+    kmax = 50000
+    a_low = 1e-9
+    a_high = 0.7
+    N = 20
+    c_low = 0.1
+    c_high = 0.8
+    CD_tao = 1e-5
+
+    print(GradDescent_Armijo(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao))
+    """
+
+    # Use CentralDifferences to approximate the gradient
+    if type(gradq) == str and gradq == "CD":
+        # Lambda function so that we can pass function and perturbation through
+        gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
+    # If not a function and not "CD" then error
+    elif not callable(gradq):
+        print("Undefined gradq - should be a function or CD")
+        return None
+
+
+    # Iteration Counter
+    k = 1
+
+    # Make a copy in case we try to change it
+    xk = x0.copy()
+
+    # Cache gradq(xk), q(xk), and norm(gradq(xk)) to speed up computation
+    gq_cache = gradq(xk)
+    q_cache = q(xk)
+    n_gq_cache = LA.norm(gq_cache)
+
+    # Alpha grid for step size search
+    alpha = np.logspace(np.log10(a_low), np.log10(a_high), N, endpoint=True)
+
+    while n_gq_cache > tol*(1 + np.abs(q_cache)) and k < kmax:
+        # Track minimum phi value in the grid
+        phimin = None
+        imin = None
+
+        # Move along the direction of the gradient, testing q at each grid point
+        for i in range(N):
+            phi = q(xk - alpha[i]*gq_cache) - q_cache
+            h = -c_low*alpha[i]*n_gq_cache*n_gq_cache
+            l = -c_high*alpha[i]*n_gq_cache*n_gq_cache
+
+            # Want the minimum phi value s.t. phi <= h and phi >= l
+            if (phi <= h and phi >= l) and (phimin == None or phi < phimin):
+                phimin = phi
+                imin = i
+
+        # Not good, probably a step size issue
+        if phimin == None:
+            print("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
+            return xk
+
+        # Update xk
+        xk -= alpha[imin]*(gq_cache/LA.norm(gq_cache))
+
+        # print(xk)
+
+        # Cache new values
+        gq_cache = gradq(xk)
+        n_gq_cache = LA.norm(gq_cache)
         q_cache = q(xk)
 
         # Increase iteration count
@@ -300,11 +428,25 @@ if __name__ == "__main__":
     Rosenbrock2 = (lambda x: Rosenbrock(2, x))
 
     x0 = np.array([[3], [3]], dtype="float")
-    tol = 1e-5
-    kmax = 5000
+    tol = 1e-4
+    kmax = 50000
     a_low = 1e-9
-    a_high = 0.99
-    N = 200
+    a_high = 0.7
+    N = 20
     CD_tao = 1e-5
 
-    print(GradDescent_ILS(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
+    # print(GradDescent_Armijo(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
+    # print(GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
+
+    x0 = np.array([[3], [3]], dtype="float")
+    tol = 1e-4
+    kmax = 80000
+    a_low = 1e-10
+    a_high = 0.9
+    N = 20
+    c_low = 0.1
+    c_high = 0.8
+    CD_tao = 1e-5
+
+    print(GradDescent_Armijo(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao))
+    # print(GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao))
