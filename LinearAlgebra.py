@@ -25,3 +25,23 @@ def backSubstitution_UpperTri(U, b):
         z[i,0] = (b[i] - np.matmul(U[i,i+1:], z[i+1:,0]))/U[i,i]
 
     return z
+def _house(x):
+    sigma = np.matmul(x[1:].transpose(),x[1:])
+    v = x.copy()
+    if sigma == 0:
+        beta = 0
+    else:
+        mu = np.sqrt(x[0]*x[0] + sigma)
+        if x[0] <= 0:
+            v[0] = x[0] - mu
+        else:
+            v[0] = -sigma/(x[0] + mu)
+        beta = 2*v[0]*v[0]/(sigma + v[0]*v[0])
+        v = v/v[0]
+    return v, beta
+
+
+if __name__ == "__main__":
+    x = np.array([[3, 1, 5, 1]]).transpose()
+    [v, beta] = _house(x)
+    print(3*v)
