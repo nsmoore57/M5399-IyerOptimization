@@ -25,6 +25,24 @@ def backSubstitution_UpperTri(U, b):
         z[i,0] = (b[i] - np.matmul(U[i,i+1:], z[i+1:,0]))/U[i,i]
 
     return z
+
+def householderQR(A):
+    """
+    Completes a QR factorization using householder matrices
+    Modifies A in place to store the R matrix in the upper triangular portion
+    and the householder vectors in the lower triangular portion.
+    """
+    for j in range(A.shape[1]):
+        [v, beta] = _house(A[j:,j])
+        A[j:,j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.transpose()),A[j:,j:])
+        if j < A.shape[0]:
+            A[j+1:,j] = v[2:m-j]
+    return A, beta
+
+def LSQR(A,b):
+    [H, beta] = 
+
+
 def _house(x):
     sigma = np.matmul(x[1:].transpose(),x[1:])
     v = x.copy()
@@ -42,6 +60,6 @@ def _house(x):
 
 
 if __name__ == "__main__":
-    x = np.array([[3, 1, 5, 1]]).transpose()
+    A = np.random.rand()
     [v, beta] = _house(x)
     print(3*v)
