@@ -75,9 +75,9 @@ def test_GradDescent():
     N = 200
     CD_tao = 1e-5
 
-    assert LA.norm(Rosenbrock1(Newton.GradDescent_ILS(Rosenbrock1, "CD", np.array([[3], [3]]), tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))) < tol*(1e2)
-    assert LA.norm(Rosenbrock2(Newton.GradDescent_ILS(Rosenbrock2, "CD", np.array([[3], [3]]), tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))) < tol*(1e2)
-    assert LA.norm(Rosenbrock3(Newton.GradDescent_ILS(Rosenbrock3, "CD", np.array([[3], [3]]), tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))) < tol*(1e2)
+    assert LA.norm(Rosenbrock1(Newton.GradDescent_ILS(Rosenbrock1, "CD", np.array([[3.], [3.]]), tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))) < tol*(1e2)
+    assert LA.norm(Rosenbrock2(Newton.GradDescent_ILS(Rosenbrock2, "CD", np.array([[3.], [3.]]), tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))) < tol*(1e2)
+    assert LA.norm(Rosenbrock3(Newton.GradDescent_ILS(Rosenbrock3, "CD", np.array([[3.], [3.]]), tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))) < tol*(1e2)
 
     # For Armijo
     tol = 1e-4

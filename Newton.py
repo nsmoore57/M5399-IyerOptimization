@@ -181,6 +181,8 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     CD_tao = 1e-5
 
     print(GradDescent_ILS(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
+
+    TODO: Make the grid evaluation parallel
     """
 
     # Use CentralDifferences to approximate the gradient
