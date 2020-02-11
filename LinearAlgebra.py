@@ -31,17 +31,28 @@ def householderQR(A):
     Completes a QR factorization using householder matrices
     Modifies A in place to store the R matrix in the upper triangular portion
     and the householder vectors in the lower triangular portion.
+
+    Returns a vector containing the beta values corresponding to each householder vector
     """
-    for j in range(A.shape[1]):
-        [v, beta] = _house(A[j:,j])
+    m,n = A.shape
+    beta = np.empty(n)
+    for j in range(n):
+        [v, beta[j]] = _house(A[j:,j])
         A[j:,j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.transpose()),A[j:,j:])
-        if j < A.shape[0]:
-            A[j+1:,j] = v[2:m-j]
-    return A, beta
+        if j < m-1:
+            A[j+1:,j] = v[1:m-j]
+        # print(A)
+    return beta
 
 def LSQR(A,b):
-    [H, beta] = 
+    m,n = A.shape
+    beta = householderQR(A)
 
+    for j in range(n):
+         v = np.hstack(([1.0],A[j+1:,j])).transpose()
+         b[j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.transpose()),b[j:])
+
+    return backSubstitution_UpperTri(A[1:n,1:n], b[1:n])
 
 def _house(x):
     sigma = np.matmul(x[1:].transpose(),x[1:])
@@ -60,6 +71,6 @@ def _house(x):
 
 
 if __name__ == "__main__":
-    A = np.random.rand()
-    [v, beta] = _house(x)
-    print(3*v)
+    A = np.array([[3, 10, 2, 3],[0, 0, 5, 7], [1, 4, 4, 7], [9, 4, 7, 1], [7, 8, 7, 1], [3, 8, 8, 5]], dtype="float")
+    b = np.array([8, 2, 5, 7, 9, 10]).transpose()
+
