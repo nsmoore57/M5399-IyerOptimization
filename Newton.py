@@ -22,7 +22,9 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
     reg_const -- Perturbation to add to Central Difference Jacobian to regularize
                  in the case that the Jacobian is singular
 
-    Returns coordinates, x, such that norm_2(f(x)) < tol if found, None otherwise
+    Returns:
+    x        -- Coordinates of the zero, if found within tolerance, None otherwise
+    k        -- If a zero is found, the number of iterations required, otherwise an error message
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -87,26 +89,31 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
         # For debugging purposes
         # print("k exceeded kmax, can't trust answer")
         # return xk
-        return None
+        return None, "Kmax Exceeded"
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
 
-def GradDescent_BB(q, gradq, x0, tol, kmax):
+def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
     """
-    Run Gradient Descent to find the location of a zero of f
-    Uses a central difference approximation to the Jacobian.
+    Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
+    Uses either the real gradient (passed as an argument) or central
+         difference approximation to the gradient.
     Step size determined by the method in Stoer and Bulirsch.
 
     Input Arguments:
-    q           -- The function of which to minimize - ignored if gradq is not "CD"
+    q           -- The function of which to minimize
     gradq       -- The gradient of q - use "CD" for Central Difference Approx
     x0          -- Initial guess for zero
                    - the closer the actual zero the better
     tol         -- Error tolerance for stopping condition
     kmax        -- Maximum steps allowed, used for stopping condition
+    CD_tao      -- Perturbation of x for approximation of gradient using CD
+                   -- Ignored if gradq != "CD"
 
-    Returns coordinates, x, such that norm_2(f(x)) < tol if found, None otherwise
+    Returns:
+    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
+    k        -- If a minimum is found, the number of iterations required, otherwise an error message
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -121,17 +128,14 @@ def GradDescent_BB(q, gradq, x0, tol, kmax):
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        print("Undefined gradq - should be a function or CD")
-        return None
+        return None, "Undefined gradq - should be a callable or CD"
 
     k = 1
     xold = np.zeros(x0.shape)
     xnew = x0
     dold = np.zeros(x0.shape)
-    while LA.norm(gradq(xnew)) > tol and k < kmax:
-        # Step direction
-        dnew = -gradq(xnew)
-
+    dnew = -gradq(xnew)
+    while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:
         # Step size
         gamma = np.matmul((xnew - xold).transpose(), dnew - dold)/LA.norm(dnew-dold)**2
 
@@ -139,14 +143,14 @@ def GradDescent_BB(q, gradq, x0, tol, kmax):
         xold = xnew
         dold = dnew
         xnew = xold - gamma*dnew
+        dnew = -gradq(xnew)
         k += 1
 
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
         # For debugging purposes
-        # print("k exceeded kmax, can't trust answer")
-        # return xk
-        return None
+        # return xk, k
+        return None, "Kmax Exceeded"
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xnew, k
@@ -154,8 +158,9 @@ def GradDescent_BB(q, gradq, x0, tol, kmax):
 
 def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
     """
-    Run Gradient Descent to find the location of a zero of f
-    Uses a central difference approximation to the Jacobian.
+    Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
+    Uses either the real gradient (passed as an argument) or a central difference approximation
+        to the gradient.
     Step size determined by an inexact line search
 
     Input Arguments:
@@ -171,10 +176,10 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
                    - Lower is faster but less accurate
     CD_tao      -- Perturbation of x for approximation of gradient using CD
                    -- Ignored if gradq != "CD"
-    parallel    -- If True, evaulates phi at all grid points in parallel
-                   
 
-    Returns coordinates, x, of the minimum (where grad q = 0) if found within tolerance, otherwise None
+    Returns:
+    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
+    k        -- If a minimum is found, the number of iterations required, otherwise an error message
 
     Example:
     def Rosenbrock2(x):
@@ -201,8 +206,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        print("Undefined gradq - should be a function or CD")
-        return None
+        return None, "Undefined gradq - should be a function or CD"
 
 
     # Iteration Counter
@@ -222,7 +226,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     while n_gq_cache > tol*(1 + np.abs(q_cache)) and k < kmax:
         # Track minimum phi value in the grid
         phimin = None
-        imin = None            
+        imin = None
 
         # Move along the direction of the gradient, testing q at each grid point
         for i in range(N):
@@ -235,8 +239,8 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
 
         # Not good, probably a step size issue
         if phimin > 0:
-            print("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
-            return xk
+            # return xk, k
+            return None, "No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N"
 
         # Update xk
         xk -= alpha[imin]*(gq_cache/n_gq_cache)
@@ -252,17 +256,17 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
         # For debugging purposes
-        print("k exceeded kmax, can't trust answer")
-        return xk
-        # return None
+        # return xk
+        return None,"k exceeded kmax, can't trust answer"
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
 
 def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_low=0.1, c_high=0.9, CD_tao = 1e-5):
     """
-    Run Gradient Descent to find the location of a zero of f
-    Uses a central difference approximation to the Jacobian.
+    Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
+    Uses either the real gradient (passed as an argument) or a central difference approximation
+        to the gradient.
     Step size determined by the Armijo condition
 
     Input Arguments:
@@ -281,7 +285,9 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
     CD_tao      -- Perturbation of x for approximation of gradient using CD
                    -- Ignored if gradq != "CD"
 
-    Returns coordinates, x, of the minimum (where grad q = 0) if found within tolerance, otherwise None
+    Returns:
+    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
+    k        -- If a minimum is found, the number of iterations required, otherwise an error message
 
     Example:
     def Rosenbrock2(x):
@@ -310,8 +316,7 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        print("Undefined gradq - should be a function or CD")
-        return None
+        return None, "Undefined gradq - should be a function or CD"
 
     # Iteration Counter
     k = 1
@@ -345,8 +350,8 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
 
         # Not good, probably a step size issue
         if phimin == None or phimin > 0:
-            print("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
-            return xk
+            # return xk, k
+            return None, "No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N"
 
         # Update xk
         xk -= alpha[imin]*gq_cache
@@ -362,17 +367,17 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
         # For debugging purposes
-        print("k exceeded kmax, can't trust answer")
-        return xk
-        # return None
+        # return xk, k
+        return None, "k exceeded kmax, can't trust answer"
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
-    
+
 def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
     """
-    Run Gradient Descent to find the location of a zero of f
-    Uses a central difference approximation to the Jacobian.
+    Run BFGS Method to find the approximate location of of a solution to gradq(x) = 0
+    Uses either the real gradient (passed as an argument) or a central difference approximation
+        to the gradient.
     Steps taken using the BFGS method
 
     Input Arguments:
@@ -389,7 +394,9 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
     CD_tao      -- Perturbation of x for approximation of gradient using CD
                    -- Ignored if gradq != "CD"
 
-    Returns coordinates, x, of the minimum (where grad q = 0) if found within tolerance, otherwise None
+    Returns:
+    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
+    k        -- If a minimum is found, the number of iterations required, otherwise an error message
 
     Example:
     def Rosenbrock2(x):
@@ -416,40 +423,36 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        print("Undefined gradq - should be a function or CD")
-        return None
+        return None, "Undefined gradq - should be a function or CD"
 
 
     # Iteration Counter
     k = 1
 
     # Make a copy in case we try to change it
-    xknew = x0.copy()
-    xkold = x0.copy()
+    x = x0.copy()
 
     # Cache gradq(xk), q(xk), and norm(gradq(xk)) to speed up computation
-    dold_cache = -gradq(xknew)
-    dnew_cache = dold_cache.copy()
-    qnew_cache = q(xknew)
-    qold_cache = qnew_cache.copy()
-    n_dold_cache = LA.norm(gq_cache)
-    n_dnew_cache = n_dold_cache.copy()
-    
+    q_cache = q(x)
+    gq_cache = gradq(x)
+
     # B, H matrices
-    B = np.eye(xknew.shape[0])
-    h = np.eye(xknew.shape[0])
+    H = np.eye(x.shape[0])
+
+    d = -gq_cache
 
     # Alpha grid for step size search
     alpha = np.logspace(np.log10(a_low), np.log10(a_high), N, endpoint=True)
 
-    while n_gq_cache > tol*(1 + np.abs(q_cache)) and k < kmax:
+
+    while LA.norm(gq_cache) > tol*(1 + np.abs(q_cache)) and k < kmax:
         # Track minimum phi value in the grid
         phimin = None
         imin = None
 
         # Move along the direction of the gradient, testing q at each grid point
         for i in range(N):
-            phi = q(xknew + alpha[i]*d_cache/n_d_cache) - q_cache
+            phi = q(x + alpha[i]*d/LA.norm(d)) - q_cache
 
             # Want the minimum phi value
             if phimin == None or phi < phimin:
@@ -458,58 +461,44 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
 
         # Not good, probably a step size issue
         if phimin > 0:
-            print("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
-            return xk
+            # For debugging purposes
+            # return x,k
+            return None, "No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N"
 
-        # Move new values into old
-        xkold = xknew
-        dold_cache = dnew_cache
-        qold_cache = qnew_cache
-        n_dold_cache = n_dnew_cache
-        
-        # Update xknew
-        xknew = xkold + alpha[imin]*(d_cache/n_d_cache)
-        qnew_cache = q(xknew)
-        
-        # Other values for update
-        s = xknew - xkold
-        y = -dnew_cache + dold_cache
-        alpha = 1/(np.matmul(s.transpose(),y))       
-        beta = -1/(np.matmul(s.transpose(),np.matmul(B,y)))
-        
-        # Update B
-        vk = np.matmul(B,y)
-        B_half = B + alpha*np.matmul(y,y.transpose())
-        B = B_half + beta*np.matmul(vk,vk.transpose())
-        
-        
+        s = alpha[imin]*(d/LA.norm(d))
+        y = gradq(x + s) - gq_cache
+
+        # Update x and the cache for q(x)
+        x += s
+        q_cache = q(x)
+
+        # Since y = gradq(x+s) - gq_cache,
+        gq_cache = y + gq_cache
+
         # Temporary variables to make the H update a little simpler
         # t stands for transpose so sty is s.transpose * y
         sty = np.matmul(s.transpose(),y)
         ytHy = np.matmul(y.transpose(),np.matmul(H,y))
         sst = np.matmul(s,s.transpose())
         Hyst = np.matmul(np.matmul(H,y),s.transpose())
-        sytH = np(s,np.matmul(y.transpose(),H))
-        
+        sytH = np.matmul(s,np.matmul(y.transpose(),H))
+
         # Update H
         H += ((sty + ytHy)/(sty*sty))*(sst) - (Hyst + sytH)/(sty)
-
-        # Update d
-        dnew_cache = -np.matmul(H,-dold_cache)
-        n_dnew_cache = LA.norm(dnew_cache)
 
         # Increase iteration count
         k += 1
 
+        d = -np.matmul(H,gq_cache)
+
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
         # For debugging purposes
-        print("k exceeded kmax, can't trust answer")
-        return xk
-        # return None
+        # return x,k
+        return None, "k exceeded kmax, can't trust answer"
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
-    return xk
+    return x, k
 
 # Not exported with Module
 def _CentralDifferencesJacobian(f, x, tao):
@@ -563,44 +552,52 @@ def _CentralDifferencesGradient(f, x, tao):
 
 # Testing from module load
 if __name__ == "__main__":
+    import time
     def Rosenbrock(a,x):
         return (a-x[0])**2 + 100*(x[1]-x[0]**2)**2
-    def Grad_Rosenbrock(a, x):
-        """
-        Gradient of the Rosenbrock function
-        Used for obtaining the mininum of the Rosenbrock
-        """
-        dfdx1 = -2*(a-x[0]) - 400*(x[1]-x[0]**2)*x[0]
-        dfdx2 = 200*(x[1]-x[0]**2)
-        return np.vstack((dfdx1, dfdx2))
 
-    GRosenbrock1 = (lambda x: Grad_Rosenbrock(1, x))
-    GRosenbrock2 = (lambda x: Grad_Rosenbrock(2, x))
     Rosenbrock2 = (lambda x: Rosenbrock(2, x))
 
     x0 = np.array([[3], [3]], dtype="float")
     tol = 1e-5
-    kmax = 100000
+    kmax = 350000
     a_low = 1e-9
     a_high = 0.99
     N = 25
     c_low = 0.1
     c_high = 0.8
     CD_tao = 1e-5
-    
+
     print("Test runs methods against the Rosenbrock where a = 2")
-    print("Minimum should occur at (2,4)")
 
     print("Testing Armijo")
-    # print(GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
-    
+    t0 = time.time()
+    x, k = GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    t1 = time.time()
+    print("Norm of Error:" + str(LA.norm(x - np.array([[2.],[4.]]))))
+    print("Number of Iterations: " + str(k))
+    print("Total Time: " + str(t1-t0))
+
     print("Testing ILS:")
-    # print(GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
-    
+    t0 = time.time()
+    x,k = GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    t1 = time.time()
+    print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
+    print("Number of Iterations: " + str(k))
+    print("Total Time: " + str(t1-t0))
+
     print("Testing BB:")
-    # print(GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax))
-    
+    t0 = time.time()
+    x,k = GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax)
+    t1 = time.time()
+    print("Norm of Error: " + str(LA.norm(x - np.array([[2.],[4.]]))))
+    print("Number of Iterations: " + str(k))
+    print("Total Time: " + str(t1-t0))
+
     print("Testing BFGS:")
-    print(BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5))
-    
-  
+    t0 = time.time()
+    x,k = BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    t1 = time.time()
+    print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
+    print("Number of Iterations: " + str(k))
+    print("Total Time: " + str(t1-t0))
