@@ -567,11 +567,19 @@ if __name__ == "__main__":
     import time
     def Rosenbrock(a,x):
         return (a-x[0])**2 + 100*(x[1]-x[0]**2)**2
+        
+    def TestFunc1(x):
+        """One of Iyer's Test Functions - global min at (-1/3, -1/2)"""
+        return 12*x[0]*x[0] + 4*x[1]*x[1] - 12*x[0]*x[1] + 2*x[1]
+    
+    def TestFunc2(x):
+        """Another of Iyer's Test Functions - global min at (0.02, 1.6)"""
+        return 10*(-0.02*x[0] + 0.5*x[0]*x[0] + x[1])**2 + 128*(-0.02*x[0] + 0.5*x[0]*x[0] - x[1]/4) - (8e-5)*x[0]
 
     Rosenbrock2 = (lambda x: Rosenbrock(2, x))
 
     x0 = np.array([[0], [0]], dtype="float")
-    tol = 1e-5
+    tol = 1e-8
     kmax = 350000
     a_low = 1e-9
     a_high = 0.99
@@ -580,36 +588,43 @@ if __name__ == "__main__":
     c_high = 0.8
     CD_tao = 1e-5
 
-    print("Test runs methods against the Rosenbrock where a = 2")
+    # print("Test runs methods against the Rosenbrock where a = 2")
 
-    print("Testing Armijo")
-    t0 = time.time()
-    x, k = GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
-    t1 = time.time()
-    print("Norm of Error:" + str(LA.norm(x - np.array([[2.],[4.]]))))
-    print("Number of Iterations: " + str(k))
-    print("Total Time: " + str(t1-t0))
+    # print("Testing Armijo")
+    # t0 = time.time()
+    # x, k = GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    # t1 = time.time()
+    # print("Norm of Error:" + str(LA.norm(x - np.array([[2.],[4.]]))))
+    # print("Number of Iterations: " + str(k))
+    # print("Total Time: " + str(t1-t0))
 
-    print("Testing ILS:")
-    t0 = time.time()
-    x,k = GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
-    t1 = time.time()
-    print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
-    print("Number of Iterations: " + str(k))
-    print("Total Time: " + str(t1-t0))
+    # print("Testing ILS:")
+    # t0 = time.time()
+    # x,k = GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    # t1 = time.time()
+    # print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
+    # print("Number of Iterations: " + str(k))
+    # print("Total Time: " + str(t1-t0))
 
-    print("Testing BB:")
-    t0 = time.time()
-    x,k = GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax)
-    t1 = time.time()
-    print("Norm of Error: " + str(LA.norm(x - np.array([[2.],[4.]]))))
-    print("Number of Iterations: " + str(k))
-    print("Total Time: " + str(t1-t0))
+    # print("Testing BB:")
+    # t0 = time.time()
+    # x,k = GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax)
+    # t1 = time.time()
+    # print("Norm of Error: " + str(LA.norm(x - np.array([[2.],[4.]]))))
+    # print("Number of Iterations: " + str(k))
+    # print("Total Time: " + str(t1-t0))
 
-    print("Testing BFGS:")
-    t0 = time.time()
-    x,k = BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
-    t1 = time.time()
-    print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
+    # print("Testing BFGS:")
+    # t0 = time.time()
+    # x,k = BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    # t1 = time.time()
+    # print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
+    # print("Number of Iterations: " + str(k))
+    # print("Total Time: " + str(t1-t0))
+    
+    x,k = BFGS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    print(x)
+    print("Norm of Error: " + str(LA.norm(x-np.array([[-1./3],[-0.5]]))))
     print("Number of Iterations: " + str(k))
-    print("Total Time: " + str(t1-t0))
+    
+
