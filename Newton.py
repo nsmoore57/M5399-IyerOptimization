@@ -1,7 +1,8 @@
 #!/usr/bin/python
 """Module for Newton's Method code - Newton's Method for Rooting and Gradient Descent'"""
-import numpy.linalg as LA
 import numpy as np
+import numpy.linalg as LA
+
 
 def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
     """
@@ -99,7 +100,7 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
     Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
     Uses either the real gradient (passed as an argument) or central
          difference approximation to the gradient.
-    Step size determined by the method in Stoer and Bulirsch.
+    Step size determined by the Barzilai-Borwein method.
 
     Input Arguments:
     q           -- The function of which to minimize
@@ -133,9 +134,16 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
     k = 1
     xold = np.zeros(x0.shape)
     xnew = x0
+    
+    # Notice if x0 = 0, then gamma will be zero, then (after 1 iteration) dnew - dold = 0 
+    #   and we get a division by zero
+    # To solve this, if x0 = 0, perturb xold by a small amount
+    if all(xnew == xold):
+        xold += 1e-7*np.ones(xold.shape)
+    
     dold = np.zeros(x0.shape)
     dnew = -gradq(xnew)
-    while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:
+    while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:    
         # Step size
         gamma = np.matmul((xnew - xold).transpose(), dnew - dold)/LA.norm(dnew-dold)**2
 
@@ -219,6 +227,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     gq_cache = gradq(xk)
     q_cache = q(xk)
     n_gq_cache = LA.norm(gq_cache)
+    normalized_gq_cache = gq_cache/n_gq_cache
 
     # Alpha grid for step size search
     alpha = np.logspace(np.log10(a_low), np.log10(a_high), N, endpoint=True)
@@ -230,7 +239,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
 
         # Move along the direction of the gradient, testing q at each grid point
         for i in range(N):
-            phi = q(xk - alpha[i]*gq_cache/n_gq_cache) - q_cache
+            phi = q(xk - alpha[i]*normalized_gq_cache) - q_cache
 
             # Want the minimum phi value
             if phimin == None or phi < phimin:
@@ -249,6 +258,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
         gq_cache = gradq(xk)
         q_cache = q(xk)
         n_gq_cache = LA.norm(gq_cache)
+        normalized_gq_cache = gq_cache/n_gq_cache
 
         # Increase iteration count
         k += 1
@@ -440,6 +450,7 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
     H = np.eye(x.shape[0])
 
     d = -gq_cache
+    normalized_d = d/LA.norm(d)
 
     # Alpha grid for step size search
     alpha = np.logspace(np.log10(a_low), np.log10(a_high), N, endpoint=True)
@@ -452,7 +463,7 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
 
         # Move along the direction of the gradient, testing q at each grid point
         for i in range(N):
-            phi = q(x + alpha[i]*d/LA.norm(d)) - q_cache
+            phi = q(x + alpha[i]*normalized_d) - q_cache
 
             # Want the minimum phi value
             if phimin == None or phi < phimin:
@@ -465,7 +476,7 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
             # return x,k
             return None, "No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N"
 
-        s = alpha[imin]*(d/LA.norm(d))
+        s = alpha[imin]*(normalized_d)
         y = gradq(x + s) - gq_cache
 
         # Update x and the cache for q(x)
@@ -490,6 +501,7 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
         k += 1
 
         d = -np.matmul(H,gq_cache)
+        normalized_d = d/LA.norm(d)
 
     # If kmax gets exceeded, we can't trust the answer so return None
     if k >= kmax:
@@ -558,7 +570,7 @@ if __name__ == "__main__":
 
     Rosenbrock2 = (lambda x: Rosenbrock(2, x))
 
-    x0 = np.array([[3], [3]], dtype="float")
+    x0 = np.array([[0], [0]], dtype="float")
     tol = 1e-5
     kmax = 350000
     a_low = 1e-9
