@@ -4,8 +4,18 @@ import numpy as np
 import numpy.linalg as LA
 
 def InteriorPointBarrier(A, b, tol, kmax, rho, mu0, mumin):
+    """
+    TODO: docstring
+    """
+    m,n = A.shape
     # Phase I - find a solution in the feasible region 
-    return _IPBarrier_Worker(A, b, tol, kmax, rho, mu0, mumin)
+    Q = np.eye(n)
+    c = np.ones((n,1))
+    x = np.ones((n,1))
+    lamb = np.zeros((m,1))
+    s = np.ones((n,1))
+    
+    return _IPBarrier_Worker(A, b, Q, c, x, lamb, s, tol, kmax, rho, mu0, mumin)
  
 def _F(A, Q, b, x, s, lamb, c, mu):
     m,n = A.shape    
@@ -14,16 +24,13 @@ def _F(A, Q, b, x, s, lamb, c, mu):
     F_row3 = np.array([[x[i,0]*s[i,0]] for i in range(n)]) - mu*np.ones((n,1))
     return np.vstack((F_row1, F_row2, F_row3))
 
-def _IPBarrier_Worker(A, b, tol, kmax, rho, mu0, mumin):
+def _IPBarrier_Worker(A, b, Q, c, x, lamb, s, tol, kmax, rho, mu0, mumin):
     """
     Runs the interior point method for constrained optimization where
     the constraints are Ax = b
     
     TODO: Better docstring
-    TODO: Split apart this code into a "Worker" who runs the method given all the
-            necessary matrices and a "Driver" who can find the x0, then solve the
-            cTx problem, then the general problem
-           
+    TODO: Cache values calculated more than once
     """
     if A.shape[0] != b.shape[0]:
         print("sizes of A and b don't match")
@@ -36,13 +43,7 @@ def _IPBarrier_Worker(A, b, tol, kmax, rho, mu0, mumin):
         return np.vstack((J_row1, J_row2, J_row3))
     
     m,n = A.shape
-    Q = np.eye(n)
-    c = np.ones((n,1))
-    x = np.ones((n,1))
     mu = mu0
-
-    lamb = np.zeros((m,1))
-    s = np.ones((n,1))
 
     k = 1
     r = -_F(A, Q, b, x, s, lamb, c, mu)
