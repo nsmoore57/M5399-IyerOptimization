@@ -1,5 +1,7 @@
 #!/usr/bin/python
-"""Module for Newton's Method code - Newton's Method for Rooting and Gradient Descent'"""
+"""Module for Newton's Method code - Newton's Method for Rooting and Gradient Descent
+    TODO: Create custom errors and raise them instead of passing out None and error message
+"""
 import numpy as np
 import numpy.linalg as LA
 

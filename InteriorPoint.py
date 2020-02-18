@@ -1,5 +1,8 @@
 #!/usr/bin/python
-"""Module for Interior Point Methods"""
+"""Module for Interior Point Methods
+    TODO: Custom Exceptions to raise when errors occur
+    See https://www.programiz.com/python-programming/user-defined-exception
+"""
 import numpy as np
 import numpy.linalg as LA
 
@@ -55,6 +58,8 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     s = np.ones((n,1))
     
     x,lamb,s,k = _IPBarrier_Worker(Q_p1, c_p1, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    if x == None:
+        return None, k
     totalk += k
     
     # Phase II
@@ -62,6 +67,8 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     c_p2 = c.copy()
     
     x,lamb,s,k = _IPBarrier_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    if x == None:
+        return None, k
     totalk += k
     
     return x,totalk
@@ -81,7 +88,6 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     
     TODO: Better docstring
     TODO: Cache values calculated more than once
-    TODO: Check for unconvergence - mu gets too small, k > kmax, etc
     """
     if A.shape[0] != b.shape[0]:
         print("sizes of A and b don't match")
@@ -144,7 +150,7 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
         index = 0
         
         j = 0
-        while L > R and j < 50:
+        while L > R and j < 1000:
             j += 1
             # Calculate L, R
             L = LA.norm(_F(A, Q, b, x + 2**(-j)*alpha_0*dx, s + 2**(-j)*alpha_0*ds, lamb + 2**(-j)*alpha_0*dlamb, c, mu))**2
@@ -152,6 +158,9 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
             if L < Lmin:
                 Lmin = L
                 index = j
+        # Check if we
+        if j >= 1000:
+            return None, None, None,"Good step size couldn't be found"
         # Update the Solution
         x += 2**(-index)*alpha_0*dx
         lamb += 2**(-index)*alpha_0*dlamb
@@ -161,6 +170,11 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
         mu = rho*mu
         r = -_F(A, Q, b, x, s, lamb, c, mu)
         normr = LA.norm(r)**2
+        
+    if k > kmax:
+        return None,None,None,"kmax exceeded, consider raising it"
+    if mu < mumin:
+        return None,None,None,"mu became smaller than mumin before reaching convergence. Consider lowering mumin"
 
     return x,lamb,s,k
 
