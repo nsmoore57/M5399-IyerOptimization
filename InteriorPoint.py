@@ -3,19 +3,27 @@
 import numpy as np
 import numpy.linalg as LA
 
-def InteriorPointBarrier(A, b, tol, kmax, rho, mu0, mumin):
+def InteriorPointBarrier(A, b, c, tol, kmax, rho, mu0, mumin):
     """
     TODO: docstring
     """
     m,n = A.shape
     # Phase I - find a solution in the feasible region 
-    Q = np.eye(n)
-    c = np.ones((n,1))
+    Q_p1 = np.eye(n)
+    c_p1 = np.ones((n,1))
     x = np.ones((n,1))
     lamb = np.zeros((m,1))
     s = np.ones((n,1))
     
-    return _IPBarrier_Worker(A, b, Q, c, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    x,lamb,s = _IPBarrier_Worker(A, b, Q_p1, c_p1, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    
+    # Phase II
+    Q_p2 = np.zeros((n,n))
+    c_p2 = c.copy()
+    
+    x,lamb,s = _IPBarrier_Worker(A, b, Q_p2, c_p2, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    return x,lamb,s
+    
  
 def _F(A, Q, b, x, s, lamb, c, mu):
     m,n = A.shape    
@@ -31,6 +39,7 @@ def _IPBarrier_Worker(A, b, Q, c, x, lamb, s, tol, kmax, rho, mu0, mumin):
     
     TODO: Better docstring
     TODO: Cache values calculated more than once
+    TODO: Check for unconvergence - mu gets too small, k > kmax, etc
     """
     if A.shape[0] != b.shape[0]:
         print("sizes of A and b don't match")
@@ -111,20 +120,18 @@ def _IPBarrier_Worker(A, b, Q, c, x, lamb, s, tol, kmax, rho, mu0, mumin):
         r = -_F(A, Q, b, x, s, lamb, c, mu)
         normr = LA.norm(r)**2
 
-    return x,k
+    return x,lamb,s
 
-if __name__ == "__main__":
-    print("Running Phase I")
-    
+if __name__ == "__main__":    
     A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
     b = np.array([[0, 9, 6]]).transpose()
+    c = np.array([[-3, 1, 3, -1]]).transpose()
     tol = 1e-5
     kmax = 10000
     rho = .9
     mu0 = 1e4
     mumin = 1e-8
-    
-    x,k = InteriorPointBarrier(A, b, tol, kmax, rho, mu0, mumin)
-    print(x)
-    print("Num Iter: " + str(k))
+   
+    x,lamb,s = InteriorPointBarrier(A, b, c, tol, kmax, rho, mu0, mumin)
+    print(LA.norm(x-np.array([[1, 1, 3, 0]]).transpose()))
     
