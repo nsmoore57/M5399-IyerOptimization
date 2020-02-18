@@ -3,11 +3,50 @@
 import numpy as np
 import numpy.linalg as LA
 
-def InteriorPointBarrier(A, b, c, tol, kmax, rho, mu0, mumin):
+def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     """
-    TODO: docstring
+    Run Interior Point Barrier Method to solve the optimzation problem:
+    min c^T*x subject to Ax = b and x >= 0,
+    
+    That is, it solves
+    min c^T*x - mu*sum(ln(x_i)) subject to Ax = b
+    using a decreasing mu value to keep the candidate solution contained in x >= 0
+    
+    Automatically finds a point in the feasible region to start
+
+    Input Arguments:
+    c         -- The vector describing the linear function to minimize
+    A         -- Matrix of coefficients for linear constraints
+    b         -- The Right-hand side vector for the linear constraints
+    tol       -- Error tolerance for stopping condition
+    kmax      -- Maximum steps allowed, used for stopping condition
+    rho       -- Used for decreasing the strength of the barrier
+                 - at each iteration mu becomes rho*mu
+    mumin     -- Minimum strength of the barrier
+    
+    Returns:
+    If the optimal is found within tolerance
+    x        -- Coordinates of the optimal value
+    k        -- The number of total iterations required 
+                - Includes the iterations needed to find the first feasible point
+    If the optimal is not found within tolerance, return None, "Error Message"
+
+    Example:
+    A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
+    b = np.array([[0, 9, 6]]).transpose()
+    c = np.array([[-3, 1, 3, -1]]).transpose()
+    tol = 1e-5
+    kmax = 10000
+    rho = .9
+    mu0 = 1e4
+    mumin = 1e-8
+   
+    x, k = InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin)
+    
+    TODO: Add checks for error messages and pass them out of the function
     """
     m,n = A.shape
+    totalk = 0
     # Phase I - find a solution in the feasible region 
     Q_p1 = np.eye(n)
     c_p1 = np.ones((n,1))
@@ -15,14 +54,17 @@ def InteriorPointBarrier(A, b, c, tol, kmax, rho, mu0, mumin):
     lamb = np.zeros((m,1))
     s = np.ones((n,1))
     
-    x,lamb,s = _IPBarrier_Worker(A, b, Q_p1, c_p1, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    x,lamb,s,k = _IPBarrier_Worker(Q_p1, c_p1, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    totalk += k
     
     # Phase II
     Q_p2 = np.zeros((n,n))
     c_p2 = c.copy()
     
-    x,lamb,s = _IPBarrier_Worker(A, b, Q_p2, c_p2, x, lamb, s, tol, kmax, rho, mu0, mumin)
-    return x,lamb,s
+    x,lamb,s,k = _IPBarrier_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    totalk += k
+    
+    return x,totalk
     
  
 def _F(A, Q, b, x, s, lamb, c, mu):
@@ -32,7 +74,7 @@ def _F(A, Q, b, x, s, lamb, c, mu):
     F_row3 = np.array([[x[i,0]*s[i,0]] for i in range(n)]) - mu*np.ones((n,1))
     return np.vstack((F_row1, F_row2, F_row3))
 
-def _IPBarrier_Worker(A, b, Q, c, x, lamb, s, tol, kmax, rho, mu0, mumin):
+def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     """
     Runs the interior point method for constrained optimization where
     the constraints are Ax = b
@@ -120,7 +162,7 @@ def _IPBarrier_Worker(A, b, Q, c, x, lamb, s, tol, kmax, rho, mu0, mumin):
         r = -_F(A, Q, b, x, s, lamb, c, mu)
         normr = LA.norm(r)**2
 
-    return x,lamb,s
+    return x,lamb,s,k
 
 if __name__ == "__main__":    
     A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
@@ -132,6 +174,6 @@ if __name__ == "__main__":
     mu0 = 1e4
     mumin = 1e-8
    
-    x,lamb,s = InteriorPointBarrier(A, b, c, tol, kmax, rho, mu0, mumin)
+    x,k = InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin)
     print(LA.norm(x-np.array([[1, 1, 3, 0]]).transpose()))
     

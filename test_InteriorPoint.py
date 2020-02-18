@@ -18,7 +18,7 @@ def test_InteriorPointBarrier():
     mu0 = 1e4
     mumin = 1e-8
    
-    x,lamb,s = IP.InteriorPointBarrier(A, b, c, tol, kmax, rho, mu0, mumin)
+    x,k = IP.InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin)
     true_Opt = np.array([[1, 1, 3, 0]]).transpose()
     assert LA.norm(x - true_Opt) < 10*tol
     
@@ -26,6 +26,6 @@ def test_InteriorPointBarrier():
     b = np.array([[20, 8]]).transpose()
     c = np.array([[1, 6, -7, 1, 5]]).transpose()
     
-    x,lamb,s = IP.InteriorPointBarrier(A, b, c, tol, kmax, rho, mu0, mumin)
+    x,k = IP.InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin)
     true_Opt = np.array([[0, 0.5714, 1.7143, 0, 0]]).transpose()
     assert LA.norm(x - true_Opt) < 10*tol
