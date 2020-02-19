@@ -4,7 +4,7 @@ def forwardSubstitution_LowerTri(L, b):
     """
     Completes forward Substitution to solve the linear system
          Lz = b
-    where L is lower triangular and b is a vector
+    where L is lower triangular and b is n x 1 np.array
     """
     z = np.zeros(b.shape)
     z[0] = b[0]/L[1,1]
@@ -17,7 +17,7 @@ def backSubstitution_UpperTri(U, b):
     """
     Completes backward Substitution to solve the linear system
          Ux = b
-    where U is upper triangular and b is a vector
+    where U is upper triangular and b is a n x 1 np.array
     """
     z = np.zeros(b.shape)
     z[-1] = b[-1]/U[-1,-1]
@@ -46,13 +46,15 @@ def householderQR(A):
 
 def LSQR(A,b):
     m,n = A.shape
-    beta = householderQR(A)
+    A_copy = A.copy()
+    beta = householderQR(A_copy)
+    b_copy = b.copy()
 
     for j in range(n):
-         v = np.hstack(([1.0],A[j+1:,j])).transpose()
-         b[j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.transpose()),b[j:])
+         v = np.hstack(([1.0],A_copy[j+1:,j])).transpose()
+         b_copy[j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.transpose()),b_copy[j:])
 
-    return backSubstitution_UpperTri(A[1:n,1:n], b[1:n])
+    return backSubstitution_UpperTri(A_copy[:n,:n], b_copy[:n].reshape((-1,1)))
 
 def _house(x):
     sigma = np.matmul(x[1:].transpose(),x[1:])
@@ -71,6 +73,15 @@ def _house(x):
 
 
 if __name__ == "__main__":
+    import numpy.linalg as LA
     A = np.array([[3, 10, 2, 3],[0, 0, 5, 7], [1, 4, 4, 7], [9, 4, 7, 1], [7, 8, 7, 1], [3, 8, 8, 5]], dtype="float")
     b = np.array([8, 2, 5, 7, 9, 10]).transpose()
+    # print(LA.norm(np.matmul(A,LA.lstsq(A,b,rcond=None)[0])-b))
+    x = LSQR(A,b)
+    Ax = np.matmul(A,x)
+    b.shape = (-1,1)
+    # print(b)
+    # print(np.matmul(A,x) - b.reshape((-1,1)))
+    # print(np.matmul(A,x))
+    print(LA.norm(np.matmul(A,x)-b))
 
