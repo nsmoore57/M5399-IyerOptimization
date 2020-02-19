@@ -118,7 +118,7 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     r = -_F(A, Q, b, x, s, lamb, c, mu)
     normr = LA.norm(r)**2
 
-    while LA.norm(r) > tol and k < kmax and mu > mumin:
+    while np.sqrt(normr) > tol and k < kmax and mu > mumin:
         # Calculate the Jacobian
         J = Jacobian()
 
