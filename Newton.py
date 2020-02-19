@@ -1,10 +1,19 @@
 #!/usr/bin/python
-"""Module for Newton's Method code - Newton's Method for Rooting and Gradient Descent
-    TODO: Create custom errors and raise them instead of passing out None and error message
-"""
+"""Module for Newton's Method code - Newton's Method for Rooting and Gradient Descent """
 import numpy as np
 import numpy.linalg as LA
 
+class NewtonError(Exception):
+    """Base class for other exceptions"""
+    pass
+
+class NonConvergenceError(NewtonError):
+    """For Errors where convergence is not complete"""
+    pass
+
+class InvalidArgumentError(NewtonError):
+    """For Errors where an argument is not the correct type"""
+    pass
 
 def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
     """
@@ -26,8 +35,11 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
                  in the case that the Jacobian is singular
 
     Returns:
-    x        -- Coordinates of the zero, if found within tolerance, None otherwise
-    k        -- If a zero is found, the number of iterations required, otherwise an error message
+    x        -- Coordinates of the zero, if found within tolerance
+    k        -- If a zero is found, the number of iterations required
+
+    Exceptions:
+    Raises NonConvergenceError if kmax is exceeded before tolerance is achieved
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -87,12 +99,12 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
 
         s = LA.norm(f_xk)**2
 
-    # If kmax gets exceeded, we can't trust the answer so return None
+    # If kmax gets exceeded, we can't trust the answer so raise an Error
     if k >= kmax:
         # For debugging purposes
         # print("k exceeded kmax, can't trust answer")
         # return xk
-        return None, "Kmax Exceeded"
+        raise NonConvergenceError("kmax exceeded, considering raising kmax")
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
@@ -115,8 +127,12 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
                    -- Ignored if gradq != "CD"
 
     Returns:
-    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
-    k        -- If a minimum is found, the number of iterations required, otherwise an error message
+    x        -- Coordinates of the minimum, if found within tolerance
+    k        -- If a minimum is found, the number of iterations required
+
+    Exceptions:
+    Raises InvalidArgumentError if gradq is not a callable or "CD"
+    Raises NonConvergenceError if kmax is exceeded before tolerance is achieved
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -131,21 +147,21 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        return None, "Undefined gradq - should be a callable or CD"
+        raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
 
     k = 1
     xold = np.zeros(x0.shape)
     xnew = x0
-    
-    # Notice if x0 = 0, then gamma will be zero, then (after 1 iteration) dnew - dold = 0 
+
+    # Notice if x0 = 0, then gamma will be zero, then (after 1 iteration) dnew - dold = 0
     #   and we get a division by zero
     # To solve this, if x0 = 0, perturb xold by a small amount
     if all(xnew == xold):
         xold += 1e-7*np.ones(xold.shape)
-    
+
     dold = np.zeros(x0.shape)
     dnew = -gradq(xnew)
-    while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:    
+    while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:
         # Step size
         gamma = np.matmul((xnew - xold).transpose(), dnew - dold)/LA.norm(dnew-dold)**2
 
@@ -156,11 +172,11 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
         dnew = -gradq(xnew)
         k += 1
 
-    # If kmax gets exceeded, we can't trust the answer so return None
+    # If kmax gets exceeded, we can't trust the answer so raise an error
     if k >= kmax:
         # For debugging purposes
         # return xk, k
-        return None, "Kmax Exceeded"
+        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xnew, k
@@ -188,8 +204,12 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
                    -- Ignored if gradq != "CD"
 
     Returns:
-    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
-    k        -- If a minimum is found, the number of iterations required, otherwise an error message
+    x        -- Coordinates of the minimum, if found within tolerance
+    k        -- If a minimum is found, the number of iterations required
+
+    Exceptions:
+    Raises InvalidArgumentError if gradq is not a callable or "CD"
+    Raises NonConvergenceError if tolerance is not achieved
 
     Example:
     def Rosenbrock2(x):
@@ -216,7 +236,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        return None, "Undefined gradq - should be a function or CD"
+        raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
 
 
     # Iteration Counter
@@ -251,7 +271,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
         # Not good, probably a step size issue
         if phimin > 0:
             # return xk, k
-            return None, "No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N"
+            raise NonConvergenceError("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
 
         # Update xk
         xk -= alpha[imin]*(gq_cache/n_gq_cache)
@@ -265,11 +285,11 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
         # Increase iteration count
         k += 1
 
-    # If kmax gets exceeded, we can't trust the answer so return None
+    # If kmax gets exceeded, we can't trust the answer so raise an error
     if k >= kmax:
         # For debugging purposes
         # return xk
-        return None,"k exceeded kmax, can't trust answer"
+        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
@@ -298,8 +318,12 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
                    -- Ignored if gradq != "CD"
 
     Returns:
-    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
-    k        -- If a minimum is found, the number of iterations required, otherwise an error message
+    x        -- Coordinates of the minimum, if found within tolerance
+    k        -- If a minimum is found, the number of iterations required
+
+    Exceptions:
+    Raises InvalidArgumentError if gradq is not a callable or "CD"
+    Raises NonConvergenceError if tolerance is not achieved
 
     Example:
     def Rosenbrock2(x):
@@ -328,7 +352,7 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        return None, "Undefined gradq - should be a function or CD"
+        raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
 
     # Iteration Counter
     k = 1
@@ -363,7 +387,7 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
         # Not good, probably a step size issue
         if phimin == None or phimin > 0:
             # return xk, k
-            return None, "No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N"
+            raise NonConvergenceError("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
 
         # Update xk
         xk -= alpha[imin]*gq_cache
@@ -376,11 +400,11 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
         # Increase iteration count
         k += 1
 
-    # If kmax gets exceeded, we can't trust the answer so return None
+    # If kmax gets exceeded, we can't trust the answer so raise error
     if k >= kmax:
         # For debugging purposes
         # return xk, k
-        return None, "k exceeded kmax, can't trust answer"
+        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
@@ -407,8 +431,12 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
                    -- Ignored if gradq != "CD"
 
     Returns:
-    x        -- Coordinates of the minimum, if found within tolerance, None otherwise
-    k        -- If a minimum is found, the number of iterations required, otherwise an error message
+    x        -- Coordinates of the minimum, if found within tolerance
+    k        -- If a minimum is found, the number of iterations required
+
+    Exceptions:
+    Raises InvalidArgumentError if gradq is not a callable or "CD"
+    Raises NonConvergenceError if tolerance is not achieved
 
     Example:
     def Rosenbrock2(x):
@@ -435,7 +463,7 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
         gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
-        return None, "Undefined gradq - should be a function or CD"
+        raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
 
 
     # Iteration Counter
@@ -476,7 +504,7 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
         if phimin > 0:
             # For debugging purposes
             # return x,k
-            return None, "No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N"
+            raise NonConvergenceError("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
 
         s = alpha[imin]*(normalized_d)
         y = gradq(x + s) - gq_cache
@@ -505,11 +533,11 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
         d = -np.matmul(H,gq_cache)
         normalized_d = d/LA.norm(d)
 
-    # If kmax gets exceeded, we can't trust the answer so return None
+    # If kmax gets exceeded, we can't trust the answer so raise error
     if k >= kmax:
         # For debugging purposes
         # return x,k
-        return None, "k exceeded kmax, can't trust answer"
+        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return x, k
