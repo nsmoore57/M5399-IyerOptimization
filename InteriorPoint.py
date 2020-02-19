@@ -164,9 +164,13 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
         j = 0
         while L > R and j < 1000:
             j += 1
+
+            # Calculate potential stepsize
+            stepsize = 2**(-j)*alpha_0
+
             # Calculate L, R
-            L = LA.norm(_F(A, Q, b, x + 2**(-j)*alpha_0*dx, s + 2**(-j)*alpha_0*ds, lamb + 2**(-j)*alpha_0*dlamb, c, mu))**2
-            R = normr - 2**(-j)*alpha_0*z
+            L = LA.norm(_F(A, Q, b, x + stepsize*dx, s + stepsize*ds, lamb + stepsize*dlamb, c, mu))**2
+            R = normr - stepsize*z
             if L < Lmin:
                 Lmin = L
                 index = j
@@ -174,9 +178,10 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
         if j >= 1000:
             return None, None, None,"Good step size couldn't be found"
         # Update the Solution
-        x += 2**(-index)*alpha_0*dx
-        lamb += 2**(-index)*alpha_0*dlamb
-        s += 2**(-index)*alpha_0*ds
+        stepsize = 2**(-index)*alpha_0
+        x += stepsize*dx
+        lamb += stepsize*dlamb
+        s += stepsize*ds
 
         k += 1
         mu = rho*mu
