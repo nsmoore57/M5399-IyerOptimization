@@ -58,8 +58,6 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     s = np.ones((n,1))
     
     x,lamb,s,k = _IPBarrier_Worker(Q_p1, c_p1, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
-    if x == None:
-        return None, k
     totalk += k
     
     # Phase II
@@ -67,8 +65,6 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     c_p2 = c.copy()
     
     x,lamb,s,k = _IPBarrier_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
-    if x == None:
-        return None, k
     totalk += k
     
     return x,totalk
