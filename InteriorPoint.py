@@ -1,10 +1,21 @@
 #!/usr/bin/python
-"""Module for Interior Point Methods
-    TODO: Custom Exceptions to raise when errors occur
-    See https://www.programiz.com/python-programming/user-defined-exception
-"""
+"""Module for Interior Point Methods"""
 import numpy as np
 import numpy.linalg as LA
+
+# Define Exceptions
+class IPError(Exception):
+    """Base class for other exceptions"""
+    pass
+
+class NonConvergenceError(IPError):
+    """For Errors where convergence is not complete"""
+    pass
+
+class DimensionMismatchError(IPError):
+    """For errors involving incorrect dimensions"""
+    pass
+
 
 def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     """
@@ -32,7 +43,10 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     x        -- Coordinates of the optimal value
     k        -- The number of total iterations required
                 - Includes the iterations needed to find the first feasible point
-    If the optimal is not found within tolerance, return None, "Error Message"
+
+    Errors:
+    Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
+    Raises a NonConvergenceError if the optimum cannot be found within tolerance
 
     Example:
     A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
@@ -45,11 +59,14 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     mumin = 1e-8
 
     x, k = InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin)
-
-    TODO: Add checks for error messages and pass them out of the function
     """
+    # Check if the dimensions of A and b are compatible
+    if A.shape[0] != b.shape[0]:
+        raise DimensionMismatchError("num of rows in A and b are not the same")
+
     m,n = A.shape
     totalk = 0
+
     # Phase I - find a solution in the feasible region
     Q_p1 = np.eye(n)
     c_p1 = np.ones((n,1))
@@ -71,6 +88,7 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
 
 
 def _F(A, Q, b, x, s, lamb, c, mu):
+    """Used in the Barrier method to calculate the overall system value"""
     m,n = A.shape
     F_row1 = np.matmul(A,x) - b
     F_row2 = np.matmul(-Q,x) + np.matmul(A.transpose(),lamb) + s - c
@@ -79,15 +97,13 @@ def _F(A, Q, b, x, s, lamb, c, mu):
 
 def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     """
-    Runs the interior point method for constrained optimization where
-    the constraints are Ax = b
+    Worker method for the InteriorPointBarrier function
 
-    TODO: Better docstring
-    TODO: Cache values calculated more than once
+    Runs Newton's method with a step size search to locate the optimal point which minimizes
+    (1/2)x^T Q x + c^T x - mu * sum(ln(xi)) subject to Ax=b
+
+    Same input params as the Driver function above
     """
-    if A.shape[0] != b.shape[0]:
-        print("sizes of A and b don't match")
-        return None
 
     def Jacobian():
         J_row1 = np.hstack((A, np.zeros((m,m)), np.zeros((m,n))))
@@ -133,7 +149,7 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
                     t = -s[i]/ds[i]
                     if alpha_bar == None or t < alpha_bar:
                         alpha_bar = t
-
+        # alpha_bar = 1 is the distance to the boundary, want a little bit on the inside of the boundary
         alpha_0 = 0.99995*min(alpha_bar,1)
 
 
@@ -168,9 +184,9 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
         normr = LA.norm(r)**2
 
     if k > kmax:
-        return None,None,None,"kmax exceeded, consider raising it"
+        raise NonConvergenceError("kmax exceeded, consider raising it")
     if mu < mumin:
-        return None,None,None,"mu became smaller than mumin before reaching convergence. Consider lowering mumin"
+        raise NonConvergenceError("mu became smaller than mumin before reaching convergence. Consider lowering mumin")
 
     return x,lamb,s,k
 
