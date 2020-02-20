@@ -145,7 +145,7 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
                         alpha_bar = t
             # search for min(-sk[i]/dsk[i]) among i s.t. ds[i] < 0
             for i in range(ds.shape[0]):
-                if s[i] < 0:
+                if ds[i] < 0:
                     t = -s[i]/ds[i]
                     if alpha_bar == None or t < alpha_bar:
                         alpha_bar = t
@@ -196,9 +196,17 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     return x,lamb,s,k
 
 if __name__ == "__main__":
-    A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
-    b = np.array([[0, 9, 6]]).transpose()
-    c = np.array([[-3, 1, 3, -1]]).transpose()
+    # See the pdf LinearProgrammingInequalityConditions.pdf
+    # To solve the following problem:
+    # min -10x_1 - 9x_2
+    # subj. to 7x_1 + 10x_2 <= 6300
+    #          3x_1 +  5x_2 <= 3600
+    #          3x_1 +  2x_2 <= 2124
+    #          2x_1 +  5x_2 <= 2700
+
+    A = np.array([[-7, -10, -1, 0, 0, 0],[-3, -5, 0, -1, 0, 0],[-3, -2, 0, 0, -1, 0],[-2, -5, 0, 0, 0, -1]])
+    b = np.array([[-6300, -3600, -2124, -2700]]).transpose()
+    c = np.array([[-10, -9, 0, 0, 0]]).transpose()
     tol = 1e-5
     kmax = 10000
     rho = .9
