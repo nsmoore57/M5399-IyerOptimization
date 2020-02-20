@@ -17,18 +17,19 @@ class DimensionMismatchError(IPError):
     pass
 
 
-def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
+def InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin):
     """
-    Run Interior Point Barrier Method to solve the optimzation problem:
-    min c^T*x subject to Ax = b and x >= 0,
+    Run Interior Point Barrier Method to solve the quadratic programming problem:
+    min (1/2)x^T*Q*x + c^T*x subject to Ax = b and x >= 0,
 
     That is, it solves
-    min c^T*x - mu*sum(ln(x_i)) subject to Ax = b
+    min (1/2)x^T*Q*x + c^T*x - mu*sum(ln(x_i)) subject to Ax = b
     using a decreasing mu value to keep the candidate solution contained in x >= 0
 
     Automatically finds a point in the feasible region to start
 
     Input Arguments:
+    Q         -- The matrix of coefficients in the quadratic portion of the problem
     c         -- The vector describing the linear function to minimize
     A         -- Matrix of coefficients for linear constraints
     b         -- The Right-hand side vector for the linear constraints
@@ -49,16 +50,18 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     Raises a NonConvergenceError if the optimum cannot be found within tolerance
 
     Example:
+    # Set up and solve a linear programming problem (Q = 0)
     A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
     b = np.array([[0, 9, 6]]).transpose()
     c = np.array([[-3, 1, 3, -1]]).transpose()
+    Q = np.zeros((4,4))
     tol = 1e-5
     kmax = 10000
     rho = .9
     mu0 = 1e4
     mumin = 1e-8
 
-    x, k = InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin)
+    x, k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
     """
     # Check if the dimensions of A and b are compatible
     if A.shape[0] != b.shape[0]:
@@ -78,7 +81,7 @@ def InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin):
     totalk += k
 
     # Phase II
-    Q_p2 = np.zeros((n,n))
+    Q_p2 = Q.copy()
     c_p2 = c.copy()
 
     x,lamb,s,k = _IPBarrier_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
@@ -206,12 +209,13 @@ if __name__ == "__main__":
 
     A = np.array([[-7, -10, -1, 0, 0, 0],[-3, -5, 0, -1, 0, 0],[-3, -2, 0, 0, -1, 0],[-2, -5, 0, 0, 0, -1]])
     b = np.array([[-6300, -3600, -2124, -2700]]).transpose()
-    c = np.array([[-10, -9, 0, 0, 0]]).transpose()
+    c = np.array([[-10, -9, 0, 0, 0, 0]]).transpose()
+    Q = np.zeros((6,6))
     tol = 1e-5
     kmax = 10000
     rho = .9
     mu0 = 1e4
     mumin = 1e-8
 
-    x,k = InteriorPointBarrier(c, A, b, tol, kmax, rho, mu0, mumin)
+    x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
     print(LA.norm(x-np.array([[1, 1, 3, 0]]).transpose()))
