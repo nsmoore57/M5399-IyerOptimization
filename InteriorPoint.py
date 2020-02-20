@@ -72,7 +72,7 @@ def InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin):
 
     # Phase I - find a solution in the feasible region
     Q_p1 = np.eye(n)
-    c_p1 = np.ones((n,1))
+    c_p1 = -1*np.ones((n,1))
     x = np.ones((n,1))
     lamb = np.zeros((m,1))
     s = np.ones((n,1))
@@ -198,6 +198,32 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
 
     return x,lamb,s,k
 
+def TransportiationProblem(SupplyVec, DemandVec, costMatrix):
+    m = SupplyVec.shape[0]
+    n = DemandVec.shape[0]
+
+    A = np.zeros((m,m*n))
+    onevec = np.ones((1,n))
+    for i in range(m):
+        A[i,i*m:(i+1)*m] = onevec
+    ID = np.hstack((np.eye(n) for i in range(m)))
+    A = np.vstack((A, ID))
+
+    c = costMatrix.reshape((1,-1))
+
+    b = vstack((SupplyVec,DemandVec))
+
+    Q = np.zeros((m*n,m*n))
+
+    tol = 1e-5
+    kmax = 10000
+    rho = .9
+    mu0 = 1e4
+    mumin = 1e-8
+
+    x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    return x,k
+
 if __name__ == "__main__":
     # See the pdf LinearProgrammingInequalityConditions.pdf
     # To solve the following problem:
@@ -207,15 +233,23 @@ if __name__ == "__main__":
     #          3x_1 +  2x_2 <= 2124
     #          2x_1 +  5x_2 <= 2700
 
-    A = np.array([[-7, -10, -1, 0, 0, 0],[-3, -5, 0, -1, 0, 0],[-3, -2, 0, 0, -1, 0],[-2, -5, 0, 0, 0, -1]])
-    b = np.array([[-6300, -3600, -2124, -2700]]).transpose()
-    c = np.array([[-10, -9, 0, 0, 0, 0]]).transpose()
-    Q = np.zeros((6,6))
-    tol = 1e-5
-    kmax = 10000
-    rho = .9
-    mu0 = 1e4
-    mumin = 1e-8
+    # A = np.array([[-7, -10, -1, 0, 0, 0],[-3, -5, 0, -1, 0, 0],[-3, -2, 0, 0, -1, 0],[-2, -5, 0, 0, 0, -1]])
+    # b = np.array([[-6300, -3600, -2124, -2700]]).transpose()
+    # c = np.array([[-10, -9, 0, 0, 0, 0]]).transpose()
+    # Q = np.zeros((6,6))
+    # tol = 1e-5
+    # kmax = 10000
+    # rho = .9
+    # mu0 = 1e4
+    # mumin = 1e-8
 
-    x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
-    print(LA.norm(x-np.array([[1, 1, 3, 0]]).transpose()))
+    # x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    # print("Found optimal :" + str(x))
+    # print("Num Iterations: " + str(k))
+
+    SupplyVec = np.array([[160, 175, 275]]).transpose()
+    DemandVec = np.array([[200, 100, 300]]).transpose()
+    CostMatrix = np.array([[]])
+
+    print(TransportiationProblem(a, b))
+
