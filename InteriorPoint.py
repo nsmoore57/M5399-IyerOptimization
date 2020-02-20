@@ -64,8 +64,9 @@ def InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin):
     x, k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
     """
     # Check if the dimensions of A and b are compatible
-    if A.shape[0] != b.shape[0]:
-        raise DimensionMismatchError("num of rows in A and b are not the same")
+    compat, error = _DimensionsCompatible(Q, c, A, b)
+    if not compat:
+        raise DimensionMismatchError(error)
 
     m,n = A.shape
     totalk = 0
@@ -89,6 +90,10 @@ def InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin):
 
     return x,totalk
 
+def _DimensionsCompatible(Q, c, A, b):
+    if A.shape[0] != b.shape[0]: return False, "Rows A != Rows b"
+    if A.shape[1] != Q.shape[0]: return False, "Cols A != Rows Q"
+    return True, "No error"
 
 def _F(A, Q, b, x, s, lamb, c, mu):
     """Used in the Barrier method to calculate the overall system value"""
@@ -125,8 +130,8 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
         # Calculate the Jacobian
         J = Jacobian()
 
-        # Solve Jd = r
-        d = LA.solve(J,r)
+        # Solve Jd = r using least squares method
+        d = LA.lstsq(J,r,rcond=None)[0]
 
         # Split the d apart into the different component pieces
         dx = d[:n,0].reshape((-1,1))
@@ -198,34 +203,7 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
 
     return x,lamb,s,k
 
-def TransportiationProblem(SupplyVec, DemandVec, costMatrix):
-    m = SupplyVec.shape[0]
-    n = DemandVec.shape[0]
-
-    A = np.zeros((m,m*n))
-    onevec = np.ones((1,n))
-    for i in range(m):
-        A[i,i*m:(i+1)*m] = onevec
-    ID = np.hstack((np.eye(n) for i in range(m)))
-    A = np.vstack((A, ID))
-
-    c = costMatrix.reshape((1,-1))
-
-    b = vstack((SupplyVec,DemandVec))
-
-    Q = np.zeros((m*n,m*n))
-
-    tol = 1e-5
-    kmax = 10000
-    rho = .9
-    mu0 = 1e4
-    mumin = 1e-8
-
-    x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
-    return x,k
-
 if __name__ == "__main__":
-    # See the pdf LinearProgrammingInequalityConditions.pdf
     # To solve the following problem:
     # min -10x_1 - 9x_2
     # subj. to 7x_1 + 10x_2 <= 6300
@@ -233,23 +211,16 @@ if __name__ == "__main__":
     #          3x_1 +  2x_2 <= 2124
     #          2x_1 +  5x_2 <= 2700
 
-    # A = np.array([[-7, -10, -1, 0, 0, 0],[-3, -5, 0, -1, 0, 0],[-3, -2, 0, 0, -1, 0],[-2, -5, 0, 0, 0, -1]])
-    # b = np.array([[-6300, -3600, -2124, -2700]]).transpose()
-    # c = np.array([[-10, -9, 0, 0, 0, 0]]).transpose()
-    # Q = np.zeros((6,6))
-    # tol = 1e-5
-    # kmax = 10000
-    # rho = .9
-    # mu0 = 1e4
-    # mumin = 1e-8
+    A = np.array([[-7, -10, -1, 0, 0, 0],[-3, -5, 0, -1, 0, 0],[-3, -2, 0, 0, -1, 0],[-2, -5, 0, 0, 0, -1]])
+    b = np.array([[-6300, -3600, -2124, -2700]]).transpose()
+    c = np.array([[-10, -9, 0, 0, 0, 0]]).transpose()
+    Q = np.zeros((6,6))
+    tol = 1e-5
+    kmax = 10000
+    rho = .9
+    mu0 = 1e4
+    mumin = 1e-8
 
-    # x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
-    # print("Found optimal :" + str(x))
-    # print("Num Iterations: " + str(k))
-
-    SupplyVec = np.array([[160, 175, 275]]).transpose()
-    DemandVec = np.array([[200, 100, 300]]).transpose()
-    CostMatrix = np.array([[]])
-
-    print(TransportiationProblem(a, b))
-
+    x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    print("Found optimal :" + str(x))
+    print("Num Iterations: " + str(k))
