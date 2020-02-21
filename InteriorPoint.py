@@ -64,7 +64,10 @@ def InteriorPointBarrier(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e4, mumin=1e-9
     if not compat:
         raise DimensionMismatchError(error)
 
+    # For convenience in defining the needed matrices
     m,n = A.shape
+    
+    # To track the total number of iterations for both phases
     totalk = 0
 
     # Phase I - find a solution in the feasible region
@@ -113,15 +116,19 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     """
 
     def Jacobian():
+        """Jacobian of the function F(x,lamb,s) above"""
         J_row1 = np.hstack((A, np.zeros((m,m)), np.zeros((m,n))))
         J_row2 = np.hstack((-1*Q, A.transpose(), np.eye(n)))
         J_row3 = np.hstack((np.diagflat(s),np.zeros((n,m)),np.diagflat(x)))
         return np.vstack((J_row1, J_row2, J_row3))
 
+    # For convenience
     m,n = A.shape
     mu = mu0
 
     k = 1
+    
+    # Cache frequently needed values
     r = -_F(A, Q, b, x, s, lamb, c, mu)
     normr = LA.norm(r)**2
 
@@ -136,13 +143,16 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
         dx = d[:n,0].reshape((-1,1))
         dlamb = d[n:n+m,0].reshape((-1,1))
         ds = d[n+m:,0].reshape((-1,1))
+        
         z = 0.9*LA.norm(np.matmul(r.transpose(),J))*LA.norm(d)
 
         # Select the largest alpha_0 with 0 <= alpha_0 <=1 so that x + alpha_0*dx > 0 and s + alpha*ds > 0
-        # This will take some work to implement - probably a pythonic way to do this
         if all(v > 0 for v in dx) and all(v > 0 for v in ds):
+            # Step is away from the boundary so we can take a full step
             alpha_bar = 1
         else:
+            # Step is moving toward the boundary, we need to make sure we don't cross over it
+            
             alpha_bar = None
             # search for min(-xk[i]/dxk[i]) among i s.t. dx[i] < 0
             for i in range(dx.shape[0]):
@@ -156,10 +166,12 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
                     t = -s[i]/ds[i]
                     if alpha_bar == None or t < alpha_bar:
                         alpha_bar = t
-        # alpha_bar = 1 is the distance to the boundary, want a little bit on the inside of the boundary
+                        
+        # alpha_bar is the distance to the boundary (or 1 if we are moving away from the boundary, 
+        # want a little bit on the inside of the boundary
         alpha_0 = 0.99995*min(alpha_bar,1)
 
-
+        # Now we need to find the "best" Newton step size (minimizes F along the direction of d)
         # Set L and R
         L = LA.norm(_F(A, Q, b, x + alpha_0*dx, s + alpha_0*ds, lamb + alpha_0*dlamb, c, mu))**2
         R = normr - alpha_0*z
@@ -181,17 +193,21 @@ def _IPBarrier_Worker(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
             if L < Lmin:
                 Lmin = L
                 index = j
-        # Check if we
+        # Check if the above loop was infinite
         if j >= 1000:
-            return None, None, None,"Good step size couldn't be found"
+            raise NonConvergenceError("Cannot determine the correct Newton step size")
+            
         # Update the Solution
         stepsize = 2**(-index)*alpha_0
         x += stepsize*dx
         lamb += stepsize*dlamb
         s += stepsize*ds
 
+        # Update counter and decrease mu
         k += 1
         mu = rho*mu
+        
+        # Update cache
         r = -_F(A, Q, b, x, s, lamb, c, mu)
         normr = LA.norm(r)**2
 
