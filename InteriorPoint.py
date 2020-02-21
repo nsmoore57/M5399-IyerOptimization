@@ -17,7 +17,7 @@ class DimensionMismatchError(IPError):
     pass
 
 
-def InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin):
+def InteriorPointBarrier(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e4, mumin=1e-9):
     """
     Run Interior Point Barrier Method to solve the quadratic programming problem:
     min (1/2)x^T*Q*x + c^T*x subject to Ax = b and x >= 0,
@@ -56,12 +56,8 @@ def InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin):
     c = np.array([[-3, 1, 3, -1]]).transpose()
     Q = np.zeros((4,4))
     tol = 1e-5
-    kmax = 10000
-    rho = .9
-    mu0 = 1e4
-    mumin = 1e-8
 
-    x, k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    x, k = InteriorPointBarrier(Q, c, A, b, tol)
     """
     # Check if the dimensions of A and b are compatible
     compat, error = _DimensionsCompatible(Q, c, A, b)
@@ -91,8 +87,11 @@ def InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin):
     return x,totalk
 
 def _DimensionsCompatible(Q, c, A, b):
-    if A.shape[0] != b.shape[0]: return False, "Rows A != Rows b"
-    if A.shape[1] != Q.shape[0]: return False, "Cols A != Rows Q"
+    """Check to make sure the dimensions of a quadratic programming problem are compatible"""
+    if A.shape[0] != b.shape[0]: return False, f"Rows A ({A.shape[0]}) != Rows b ({b.shape[0]})"
+    if Q.shape[0] != Q.shape[1]: return False, f"Q must be square - is currently {Q.shape}"
+    if Q.shape[0] != A.shape[1]: return False, f"Cols A ({A.shape[1]}) != Rows Q ({Q.shape[0]})"
+    if Q.shape[0] != c.shape[0]: return False, f"Rows c ({c.shape[0]}) != Rows Q ({Q.shape[0]})"
     return True, "No error"
 
 def _F(A, Q, b, x, s, lamb, c, mu):
@@ -222,5 +221,5 @@ if __name__ == "__main__":
     mumin = 1e-8
 
     x,k = InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
-    print("Found optimal :" + str(x))
+    print("Found optimal : \n" + str(x[0:2]))
     print("Num Iterations: " + str(k))
