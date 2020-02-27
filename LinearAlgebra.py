@@ -38,7 +38,7 @@ def householderQR(A):
     beta = np.empty(n)
     for j in range(n):
         [v, beta[j]] = _house(A[j:,j])
-        A[j:,j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.transpose()),A[j:,j:])
+        A[j:,j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.T),A[j:,j:])
         if j < m-1:
             A[j+1:,j] = v[1:m-j]
         # print(A)
@@ -51,13 +51,13 @@ def LSQR(A,b):
     b_copy = b.copy()
 
     for j in range(n):
-         v = np.hstack(([1.0],A_copy[j+1:,j])).transpose()
-         b_copy[j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.transpose()),b_copy[j:])
+         v = np.hstack(([1.0],A_copy[j+1:,j])).T
+         b_copy[j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.T),b_copy[j:])
 
     return backSubstitution_UpperTri(A_copy[:n,:n], b_copy[:n].reshape((-1,1)))
 
 def _house(x):
-    sigma = np.matmul(x[1:].transpose(),x[1:])
+    sigma = np.matmul(x[1:].T,x[1:])
     v = x.copy()
     if sigma == 0:
         beta = 0
@@ -75,7 +75,7 @@ def _house(x):
 if __name__ == "__main__":
     import numpy.linalg as LA
     A = np.array([[3, 10, 2, 3],[0, 0, 5, 7], [1, 4, 4, 7], [9, 4, 7, 1], [7, 8, 7, 1], [3, 8, 8, 5]], dtype="float")
-    b = np.array([8, 2, 5, 7, 9, 10]).transpose()
+    b = np.array([8, 2, 5, 7, 9, 10]).T
     # print(LA.norm(np.matmul(A,LA.lstsq(A,b,rcond=None)[0])-b))
     x = LSQR(A,b)
     Ax = np.matmul(A,x)

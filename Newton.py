@@ -73,7 +73,7 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
             theta = 1e-7
             dk = LA.solve(H + theta*np.eye(xk.shape[0]), -f_xk)
 
-        z = c*LA.norm(np.matmul(f_xk.transpose(),H))*LA.norm(dk)
+        z = c*LA.norm(np.matmul(f_xk.T,H))*LA.norm(dk)
 
         # Solve the step size using the method by Stoer and Bulirsch
         j = 0
@@ -163,7 +163,7 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
     dnew = -gradq(xnew)
     while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:
         # Step size
-        gamma = np.matmul((xnew - xold).transpose(), dnew - dold)/LA.norm(dnew-dold)**2
+        gamma = np.matmul((xnew - xold).T, dnew - dold)/LA.norm(dnew-dold)**2
 
         # Reset all old values to avoid evaluating f more times than necessary
         xold = xnew
@@ -518,11 +518,11 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
 
         # Temporary variables to make the H update a little simpler
         # t stands for transpose so sty is s.transpose * y
-        sty = np.matmul(s.transpose(),y)
-        ytHy = np.matmul(y.transpose(),np.matmul(H,y))
-        sst = np.matmul(s,s.transpose())
-        Hyst = np.matmul(np.matmul(H,y),s.transpose())
-        sytH = np.matmul(s,np.matmul(y.transpose(),H))
+        sty = np.matmul(s.T,y)
+        ytHy = np.matmul(y.T,np.matmul(H,y))
+        sst = np.matmul(s,s.T)
+        Hyst = np.matmul(np.matmul(H,y),s.T)
+        sytH = np.matmul(s,np.matmul(y.T,H))
 
         # Update H
         H += ((sty + ytHy)/(sty*sty))*(sst) - (Hyst + sytH)/(sty)

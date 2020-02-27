@@ -23,8 +23,8 @@ def TransportationProblem(supplyVec, demandVec, costMatrix):
     Raises a NonConvergenceError if the optimum cannot be found within tolerance
 
     Example:
-    supplyVec = np.array([[150, 175, 275]]).transpose()
-    demandVec = np.array([[200, 100, 300]]).transpose()
+    supplyVec = np.array([[150, 175, 275]]).T
+    demandVec = np.array([[200, 100, 300]]).T
     costMatrix = np.array([[6, 8, 10],[7, 11, 11],[4, 5, 12]])
 
     # print regular style numbers with a single decimal place
@@ -54,8 +54,8 @@ def TransportationProblem(supplyVec, demandVec, costMatrix):
     return x.reshape(costMatrix.shape),k
 
 if __name__ == "__main__":
-    supplyVec = np.array([[150, 175, 275]]).transpose()
-    demandVec = np.array([[200, 100, 300]]).transpose()
+    supplyVec = np.array([[150, 175, 275]]).T
+    demandVec = np.array([[200, 100, 300]]).T
     costMatrix = np.array([[6, 8, 10],[7, 11, 11],[4, 5, 12]])
 
     # print regular style numbers with a single decimal place
