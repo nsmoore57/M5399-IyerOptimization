@@ -306,6 +306,13 @@ def InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rh
 
     x,lamb,s,t,theta,k = _IPBarrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin)
     totalk += k
+    
+    print("Phase I Complete:")
+    print(f"x = {x}")
+    print(f"lamb = {lamb}")
+    print(f"s = {s}")
+    print(f"t = {t}")
+    print(f"theta = {theta}")
 
     # Phase II
     Q_p2 = Q.copy()
@@ -467,7 +474,7 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
     if k > kmax:
         raise NonConvergenceError("kmax exceeded, consider raising it")
     if mu < mumin:
-        raise NonConvergenceError("mu became smaller than mumin before reaching convergence. Consider lowering mumin")
+        raise NonConvergenceError(f"mu became smaller than mumin before reaching convergence. Consider lowering mumin.\n x = {x}")
 
     return x,lamb,s,t,theta,k
 
@@ -500,21 +507,53 @@ if __name__ == "__main__":
     #          x_1 + 3x_2 + 2x_3 <= 3
     #               -2x_2 +  x_3 <= 1
     #              x_1, x_2, x_3 >= 0
-    A = np.array([[-1, -3, -2], [0, 2, 1]])
-    b = np.array([[-3, -1]]).T
-    c = np.array([[2, 3, 6]]).T
-    Q = np.zeros((3,3))
-    C = np.array([[1, -1, 1],[2, 2, -3]])
-    d = np.array([[2, 0]]).T
+    # A = np.array([[-1, -3, -2], [0, 2, 1]])
+    # b = np.array([[-3, -1]]).T
+    # c = np.array([[2, 3, 6]]).T
+    # Q = np.zeros((3,3))
+    # C = np.array([[1, -1, 1],[2, 2, -3]])
+    # d = np.array([[2, 0]]).T
+    # tol = 1e-8
+    # kmax = 10000
+    # rho = .9
+    # mu0 = 1e4
+    # mumin = 1e-9
+    
+    # x,k = InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
+    # print("Found Optimal : \n" + str(x))
+    # print("Num Iterations: " + str(k))
+    # true_answer = np.array([[1.2,0,0.8]]).T
+    # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
+   
+    # To solve the following problem:
+    # min 0.5*(15*x_1 + 10*x_2 - 13000)_- + 0.3(x_1 + x_2 - 1150)_- + 0.2|x_1 - 400|
+    # subj. to 2x_1 +   x_2 <= 1500
+    #           x_1 +   x_2 <= 1200
+    #           x_1         <= 500
+    #              x_1, x_2 >= 0
+    # See the notes for the explanation 
+    A = np.zeros((3,8),dtype="float")
+    A[0,0] = -2.0
+    A[0,1] = -1.
+    A[1,0] = -1.
+    A[1,1] = -1.
+    A[2,0] = -1.
+    b = -1*np.array([[1500, 1200, 500]]).T
+    C = np.array([[3, 2, -1, 1,  0, 0, 0,  0],
+                  [1, 1,  0, 0, -1, 1, 0,  0],
+                  [1, 0,  0, 0,  0, 0, -1, 1]])
+    d = np.array([[2600, 1150, 400]]).T
+    c = np.array([[0, 0, 0, 2.5, 0, 0.3, 0.2, 0.2]]).T
+    Q = np.zeros((8,8))
     tol = 1e-8
     kmax = 10000
     rho = .9
-    mu0 = 1e4
-    mumin = 1e-9
+    mu0 = 1e3
+    mumin = 1e-12
     
     x,k = InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
-    print("Found Optimal : \n" + str(x))
+    print("Found Optimal : \n" + str(x[0:2]))
     print("Num Iterations: " + str(k))
-    true_answer = np.array([[1.2,0,0.8]]).T
-    print("Norm of Error is: " + str(LA.norm(x - true_answer)))
-   
+    true_answer = np.array([[350,800]]).T
+    print("Norm of Error is: " + str(LA.norm(x[0:2] - true_answer)))
+    
