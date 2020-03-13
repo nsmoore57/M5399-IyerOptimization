@@ -295,24 +295,19 @@ def InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rh
     # To track the total number of iterations for both phases
     totalk = 0
 
-    # Phase I - find a solution in the feasible region
-    Q_p1 = np.eye(n)
-    c_p1 = -1*np.ones((n,1))
     x = np.ones((n,1))
     lamb = np.zeros((p,1))
     s = np.ones((n,1))
     t = np.ones((m,1))
     theta = np.ones((m,1))
 
-    x,lamb,s,t,theta,k = _IPBarrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin)
-    totalk += k
-    
-    print("Phase I Complete:")
-    print(f"x = {x}")
-    print(f"lamb = {lamb}")
-    print(f"s = {s}")
-    print(f"t = {t}")
-    print(f"theta = {theta}")
+    # Phase I - find a solution in the feasible region - if required
+    if np.count_nonzero(Q) != 0:
+        print("Running Phase 1")
+        Q_p1 = np.eye(n)
+        c_p1 = -1*np.ones((n,1))
+        x,lamb,s,t,theta,k = _IPBarrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin)
+        totalk += k
 
     # Phase II
     Q_p2 = Q.copy()
@@ -347,14 +342,13 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
 
     def Jacobian():
         """Jacobian of the function F(x,lamb,s) below"""
-        
         return np.block([[C,  np.zeros((p,p+n+2*m))],
                          [-1*Q, C.T, np.eye(n), A.T, np.zeros((n,m))],
                          [A, np.zeros((m,p+n+m)),-1*np.eye(m)],
                          [np.diagflat(s), np.zeros((n,p)), np.diagflat(x), np.zeros((n,2*m))],
                          [np.zeros((m,2*n+p)), np.diagflat(theta), np.diagflat(t)]])
         
-    def F(Fx, Fs, Flamb, Ft, Ftheta):
+    def F(Fx, Flamb, Fs, Ft, Ftheta):
         """Used in the Barrier method to calculate the overall system value"""
         m,n = A.shape
         p,_ = C.shape
@@ -373,7 +367,7 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
     k = 1
     
     # Cache frequently needed values
-    r = -F(x,s,lamb,t,theta)
+    r = -F(x,lamb,s,t,theta)
     normr = LA.norm(r)**2
 
     while np.sqrt(normr) > tol and k < kmax and mu > mumin:
@@ -393,12 +387,11 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
         z = 0.9*LA.norm(np.matmul(r.T,J))*LA.norm(dir)
 
         # Select the largest alpha_0 with 0 <= alpha_0 <=1 so that x + alpha_0*dx > 0 and s + alpha*ds > 0
-        if all(v > 0 for v in dx) and all(v > 0 for v in ds) and all(v > 0 for v in dt) and all(v > 0 for v in dtheta):
+        if all(v >= 0 for v in dx) and all(v >= 0 for v in ds) and all(v >= 0 for v in dt) and all(v >= 0 for v in dtheta):
             # Step is away from the boundary so we can take a full step
             alpha_bar = 1
         else:
             # Step is moving toward the boundary, we need to make sure we don't cross over it
-            
             alpha_bar = None
             # search for min(-xk[i]/dxk[i]) among i s.t. dx[i] < 0
             for i in range(dx.shape[0]):
@@ -412,13 +405,13 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
                     val = -s[i]/ds[i]
                     if alpha_bar == None or val < alpha_bar:
                         alpha_bar = val
-            # search for min(-tk[i]/dtk[i]) among i s.t. dt[i] < 0
+            # # search for min(-tk[i]/dtk[i]) among i s.t. dt[i] < 0
             for i in range(dt.shape[0]):
                 if dt[i] < 0:
                     val = -t[i]/dt[i]
                     if alpha_bar == None or val < alpha_bar:
                         alpha_bar = val
-            # search for min(-thetak[i]/dthetak[i]) among i s.t. dtheta[i] < 0
+            # # search for min(-thetak[i]/dthetak[i]) among i s.t. dtheta[i] < 0
             for i in range(dtheta.shape[0]):
                 if dtheta[i] < 0:
                     val = -theta[i]/dtheta[i]
@@ -428,10 +421,11 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
         # alpha_bar is the distance to the boundary (or 1 if we are moving away from the boundary, 
         # want a little bit on the inside of the boundary
         alpha_0 = 0.99995*min(alpha_bar,1)
+        # print(alpha_0)
 
         # Now we need to find the "best" Newton step size (minimizes F along the direction of d)
         # Set L and R
-        L = LA.norm(F(x + alpha_0*dx, s + alpha_0*ds, lamb + alpha_0*dlamb, t + alpha_0*dt, theta + alpha_0*dtheta))**2
+        L = LA.norm(F(x + alpha_0*dx, lamb + alpha_0*dlamb, s + alpha_0*ds, t + alpha_0*dt, theta + alpha_0*dtheta))**2
         R = normr - alpha_0*z
 
         # Find min L
@@ -446,7 +440,7 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
             stepsize = 2**(-j)*alpha_0
 
             # Calculate L, R
-            L = LA.norm(F(x + stepsize*dx, s + stepsize*ds, lamb + stepsize*dlamb, t + stepsize*dt, theta + stepsize*dtheta))**2
+            L = LA.norm(F(x + stepsize*dx, lamb + stepsize*dlamb, s + stepsize*ds, t + stepsize*dt, theta + stepsize*dtheta))**2
             R = normr - stepsize*z
             if L < Lmin:
                 Lmin = L
@@ -468,7 +462,7 @@ def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta,
         mu = rho*mu
         
         # Update cache
-        r = -F(x, s, lamb, t, theta)
+        r = -F(x, lamb, s, t, theta)
         normr = LA.norm(r)**2
 
     if k > kmax:
@@ -502,12 +496,12 @@ if __name__ == "__main__":
 
     # Solve the problem:
     # min 2x_1 + 3x_2 + 6x_3
-    # subj. to x_1 -  x_2 +  x_3 = 2
-    #         2x_1 + 2x_2 - 3x_3 = 0
+    # subj. to x_1 -  x_2 +  x_3  = 2
+    #         2x_1 + 2x_2 - 3x_3  = 0
     #          x_1 + 3x_2 + 2x_3 <= 3
     #               -2x_2 +  x_3 <= 1
     #              x_1, x_2, x_3 >= 0
-    # A = np.array([[-1, -3, -2], [0, 2, 1]])
+    # A = np.array([[-1, -3, -2], [0, 2, -1]])
     # b = np.array([[-3, -1]]).T
     # c = np.array([[2, 3, 6]]).T
     # Q = np.zeros((3,3))
@@ -522,8 +516,10 @@ if __name__ == "__main__":
     # x,k = InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
     # print("Found Optimal : \n" + str(x))
     # print("Num Iterations: " + str(k))
-    # true_answer = np.array([[1.2,0,0.8]]).T
+    # true_answer = np.array([[1.208,0.042,0.833]]).T
     # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
+    # print("Cost of found solution:" + str(np.matmul(c.T,x)))
+    # print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)))
    
     # To solve the following problem:
     # min 0.5*(15*x_1 + 10*x_2 - 13000)_- + 0.3(x_1 + x_2 - 1150)_- + 0.2|x_1 - 400|
@@ -534,21 +530,21 @@ if __name__ == "__main__":
     # See the notes for the explanation 
     A = np.zeros((3,8),dtype="float")
     A[0,0] = -2.0
-    A[0,1] = -1.
-    A[1,0] = -1.
-    A[1,1] = -1.
-    A[2,0] = -1.
-    b = -1*np.array([[1500, 1200, 500]]).T
+    A[0,1] = A[1,0] = A[1,1] = A[2,0] = -1.
+    b = np.array([[-1500, -1200, -500]]).T
+    
     C = np.array([[3, 2, -1, 1,  0, 0, 0,  0],
                   [1, 1,  0, 0, -1, 1, 0,  0],
                   [1, 0,  0, 0,  0, 0, -1, 1]])
     d = np.array([[2600, 1150, 400]]).T
+    
     c = np.array([[0, 0, 0, 2.5, 0, 0.3, 0.2, 0.2]]).T
     Q = np.zeros((8,8))
+    
     tol = 1e-8
     kmax = 10000
     rho = .9
-    mu0 = 1e3
+    mu0 = 100
     mumin = 1e-12
     
     x,k = InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
@@ -556,4 +552,3 @@ if __name__ == "__main__":
     print("Num Iterations: " + str(k))
     true_answer = np.array([[350,800]]).T
     print("Norm of Error is: " + str(LA.norm(x[0:2] - true_answer)))
-    
