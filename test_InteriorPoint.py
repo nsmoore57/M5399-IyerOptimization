@@ -76,3 +76,19 @@ def test_Barrier_EqualityInequality():
     assert LA.norm(x[0:2] - true_Opt) < 10*tol
     assert LA.norm(np.matmul(C,x)-d) < tol
     assert all(np.matmul(A,x) > b)
+
+def test_Predictor_Corrector():
+    """Tests the IP.Predictor_Corrector Method"""
+
+    A = np.array([[1,  2, -1,  1],
+                  [2, -2,  3,  3],
+                  [1, -1,  2, -1]])
+    b = np.array([[0, 9, 6]]).T
+    Q = np.zeros((4,4))
+    c = np.array([[-3, 1, 3, -1]]).T
+    tol = (1e0,1e-9)
+
+    x,k = IP.Predictor_Corrector(Q, c, A, b, tol, mumin=1e-12)
+    true_Opt = np.array([[1, 1, 3, 0]]).T
+    assert LA.norm(x - true_Opt) < 10*tol[1] # Should be close to true optimal
+    assert LA.norm(np.matmul(A,x)-b) < tol[1] # and should satisfy Ax = b
