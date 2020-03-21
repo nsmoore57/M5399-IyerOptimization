@@ -597,11 +597,11 @@ if __name__ == "__main__":
     import time
     def Rosenbrock(a,x):
         return (a-x[0])**2 + 100*(x[1]-x[0]**2)**2
-        
+
     def TestFunc1(x):
         """One of Iyer's Test Functions - global min at (-1/3, -1/2)"""
         return 12*x[0]*x[0] + 4*x[1]*x[1] - 12*x[0]*x[1] + 2*x[1]
-    
+
     def TestFunc2(x):
         """Another of Iyer's Test Functions - global min at (0.02, 1.6)"""
         return 10*(-0.02*x[0] + 0.5*x[0]*x[0] + x[1])**2 + 128*(-0.02*x[0] + 0.5*x[0]*x[0] - x[1]/4) - (8e-5)*x[0]
@@ -651,10 +651,8 @@ if __name__ == "__main__":
     # print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
     # print("Number of Iterations: " + str(k))
     # print("Total Time: " + str(t1-t0))
-    
+
     x,k = BFGS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     print(x)
     print("Norm of Error: " + str(LA.norm(x-np.array([[-1./3],[-0.5]]))))
     print("Number of Iterations: " + str(k))
-    
-
