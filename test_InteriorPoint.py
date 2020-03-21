@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as LA
 import InteriorPoint as IP
 
-def test_InteriorPointBarrier_EqualityOnly():
+def test_Barrier_EqualityOnly():
     """Tests the IP.InteriorPointBarrier_EqualityOnly Method"""
 
     A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
@@ -18,7 +18,7 @@ def test_InteriorPointBarrier_EqualityOnly():
     mu0 = 1e4
     mumin = 1e-8
 
-    x,k = IP.InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    x,k = IP.Barrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
     true_Opt = np.array([[1, 1, 3, 0]]).T
     assert LA.norm(x - true_Opt) < 10*tol # Should be close to true optimal
     assert LA.norm(np.matmul(A,x)-b) < tol # and should satisfy Ax = b
@@ -28,14 +28,14 @@ def test_InteriorPointBarrier_EqualityOnly():
     c = np.array([[1, 6, -7, 1, 5]]).T
     Q = np.zeros((5,5))
 
-    x,k = IP.InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    x,k = IP.Barrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
     true_Opt = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
     assert LA.norm(x - true_Opt) < 10*tol # Should be close to true optimal
     assert LA.norm(np.matmul(A,x) - b) < tol # and should satisfy Ax = b
-    
-def test_InteriorPointBarrier_EqualityInequality():
+
+def test_Barrier_EqualityInequality():
     """Tests the IP.InteriorPointBarrier_EqualityInequality Method"""
-    
+
     A = np.array([[-1, -3, -2], [0, 2, 1]])
     b = np.array([[-3, -1]]).T
     c = np.array([[2, 3, 6]]).T
@@ -47,31 +47,31 @@ def test_InteriorPointBarrier_EqualityInequality():
     rho = .9
     mu0 = 1e4
     mumin = 1e-9
-    
-    x,k = IP.InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
+
+    x,k = IP.Barrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
     true_Opt = np.array([[1.2,0,0.8]]).T
     assert LA.norm(x - true_Opt) < 10*tol # should be close to true optimal
     assert LA.norm(np.matmul(C,x)-d) < tol # and should satisfy Cx = d
     assert all(np.matmul(A,x) > b) # and should satisfy Ax >= b
-    
+
     A = np.zeros((3,8),dtype="float")
     A[0,0] = -2.0
     A[0,1] = A[1,0] = A[1,1] = A[2,0] = -1.
     b = np.array([[-1500, -1200, -500]]).T
-    
+
     C = np.array([[3, 2, -1, 1,  0, 0, 0,  0],
                   [1, 1,  0, 0, -1, 1, 0,  0],
                   [1, 0,  0, 0,  0, 0, -1, 1]])
     d = np.array([[2600, 1150, 400]]).T
-    
+
     c = np.array([[0, 0, 0, 2.5, 0, 0.3, 0.2, 0.2]]).T
     Q = np.zeros((8,8))
-    
+
     rho = .9
     mu0 = 100
     mumin = 1e-12
-    
-    x,k = IP.InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
+
+    x,k = IP.Barrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
     true_Opt = np.array([[350,800]]).T
     assert LA.norm(x[0:2] - true_Opt) < 10*tol
     assert LA.norm(np.matmul(C,x)-d) < tol

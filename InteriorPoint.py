@@ -17,7 +17,7 @@ class DimensionMismatchError(IPError):
     pass
 
 
-def InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e4, mumin=1e-9):
+def Barrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9):
     """
     Run Interior Point Barrier Method to solve the quadratic programming problem:
     min (1/2)x^T*Q*x + c^T*x subject to Ax = b and x >= 0,
@@ -37,6 +37,7 @@ def InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e
     kmax      -- Maximum steps allowed, used for stopping condition
     rho       -- Used for decreasing the strength of the barrier
                  - at each iteration mu becomes rho*mu
+    mu0       -- Starting value of mu for strength of barrier
     mumin     -- Minimum strength of the barrier
 
     Returns:
@@ -71,20 +72,23 @@ def InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e
     totalk = 0
 
     # Phase I - find a solution in the feasible region
-    Q_p1 = np.eye(n)
-    c_p1 = -1*np.ones((n,1))
     x = np.ones((n,1))
     lamb = np.zeros((m,1))
     s = np.ones((n,1))
 
-    x,lamb,s,k = _IPBarrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
-    totalk += k
+
+    if np.count_nonzero(Q) != 0:
+        print("Running Phase 1")
+        Q_p1 = np.eye(n)
+        c_p1 = -1*np.ones((n,1))
+        x,lamb,s,k = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
+        totalk += k
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x,lamb,s,k = _IPBarrier_Worker_EqualityOnly(Q_p2, c_p2, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
+    x,lamb,s,k = _Barrier_Worker_EqualityOnly(Q_p2, c_p2, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin)
     totalk += k
 
     return x,totalk
@@ -101,7 +105,7 @@ def _DimensionsCompatible_EqualityOnly(Q, c, A, b):
 
 
 
-def _IPBarrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
+def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     """
     Worker method for the InteriorPointBarrier_EqualityOnly function
 
@@ -221,14 +225,14 @@ def _IPBarrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, 
 
     return x,lamb,s,k
 
-def InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e4, mumin=1e-9):
+def Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9):
     """
     Run Interior Point Barrier Method to solve the quadratic programming problem:
     min (1/2)x^T*Q*x + c^T*x subject to Ax >= b , x >= 0, and Cx = d
 
     That is, it solves
     min (1/2)x^T*Q*x + c^T*x - mu*sum(ln(x_i)) - mu(sum(ln(ri*x-b_i))) subject to Cx = d
-    where r_i is the ith row of A using a decreasing mu value to keep the candidate solution 
+    where r_i is the ith row of A using a decreasing mu value to keep the candidate solution
     contained in x >= 0
 
     Automatically finds a point in the feasible region to start
@@ -244,6 +248,7 @@ def InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rh
     kmax      -- Maximum steps allowed, used for stopping condition
     rho       -- Used for decreasing the strength of the barrier
                  - at each iteration mu becomes rho*mu
+    mu0       -- Starting value of mu for the step size
     mumin     -- Minimum strength of the barrier
 
     Returns:
@@ -306,14 +311,14 @@ def InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rh
         print("Running Phase 1")
         Q_p1 = np.eye(n)
         c_p1 = -1*np.ones((n,1))
-        x,lamb,s,t,theta,k = _IPBarrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin)
+        x,lamb,s,t,theta,k = _Barrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin)
         totalk += k
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x,lamb,s,t,theta,k = _IPBarrier_Worker_EqualityInequality(Q_p2, c_p2, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin)
+    x,lamb,s,t,theta,k = _Barrier_Worker_EqualityInequality(Q_p2, c_p2, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin)
     totalk += k
 
     return x,k
@@ -330,7 +335,7 @@ def _DimensionsCompatible_EqualityInequality(Q, c, A, b, C, d):
     if c.shape[1] != 1: return False, "c must be a column vector"
     return True, "No error"
 
-def _IPBarrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin):
+def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin):
     """
     Worker method for the InteriorPointBarrier_EqualityInequality function
 
@@ -521,34 +526,4 @@ if __name__ == "__main__":
     # print("Cost of found solution:" + str(np.matmul(c.T,x)))
     # print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)))
 
-    # To solve the following problem:
-    # min 0.5*(15*x_1 + 10*x_2 - 13000)_- + 0.3(x_1 + x_2 - 1150)_- + 0.2|x_1 - 400|
-    # subj. to 2x_1 +   x_2 <= 1500
-    #           x_1 +   x_2 <= 1200
-    #           x_1         <= 500
-    #              x_1, x_2 >= 0
-    # See the notes for the explanation 
-    A = np.zeros((3,8),dtype="float")
-    A[0,0] = -2.0
-    A[0,1] = A[1,0] = A[1,1] = A[2,0] = -1.
-    b = np.array([[-1500, -1200, -500]]).T
-
-    C = np.array([[3, 2, -1, 1,  0, 0, 0,  0],
-                  [1, 1,  0, 0, -1, 1, 0,  0],
-                  [1, 0,  0, 0,  0, 0, -1, 1]])
-    d = np.array([[2600, 1150, 400]]).T
-
-    c = np.array([[0, 0, 0, 2.5, 0, 0.3, 0.2, 0.2]]).T
-    Q = np.zeros((8,8))
-
-    tol = 1e-8
-    kmax = 10000
-    rho = .9
-    mu0 = 100
-    mumin = 1e-12
-
-    x,k = InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
-    print("Found Optimal : \n" + str(x[0:2]))
-    print("Num Iterations: " + str(k))
-    true_answer = np.array([[350,800]]).T
-    print("Norm of Error is: " + str(LA.norm(x[0:2] - true_answer)))
+    print("Nothing here yet")
