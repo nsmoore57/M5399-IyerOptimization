@@ -40,7 +40,9 @@ To solve this with our Interior Point Method, we need to convert the inequalitie
      mu0 = 1e4
      mumin = 1e-8
 
-     x,k = IP.InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+     x,k = IP.InteriorPointBarrier_EqualityOnly(Q, c, A, b, 
+                                                tol, kmax, rho, 
+                                                mu0, mumin)
      np.set_printoptions(suppress=True,precision=1)
      print("Found optimal :\n" + str(x[0:2]))
      print("Num Iterations: " + str(k))
@@ -109,7 +111,9 @@ How many tons of wheat should be transported from each grain elevator to each mi
       mu0 = 1e4
       mumin = 1e-8
 
-      x,k = IP.InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+      x,k = IP.InteriorPointBarrier_EqualityOnly(Q, c, A, b, 
+                                                 tol, kmax, rho, 
+                                                 mu0, mumin)
       return x.reshape(costMatrix.shape),k
   supplyVec = np.array([[150, 175, 275]]).transpose()
   demandVec = np.array([[200, 100, 300]]).transpose()
@@ -124,3 +128,75 @@ How many tons of wheat should be transported from each grain elevator to each mi
 : [[ 12.4   0.  137.6]
 :  [ 12.6   0.  162.4]
 :  [175.  100.    0. ]]
+** Problem Involving Piecewise Objective Function
+Problem:
+Minimize
+\begin{equation*}
+  2.5 \left[3x_1 + 2x_2 - 2600\right]_- + 0.3 \left[x_1 + x_2 - 1150\right]_- + 0.2 \lvert x_1 - 400 \rvert
+\end{equation*}
+Subject to: 
+\begin{align*}
+  2x_1 + x_2 &\leq 1500 \\
+   x_1 + x_2 &\leq 1200 \\
+   x_1       &\leq  500 \\
+\end{align*}
+
+Solution:
+
+To solve this, first we need to define $\left[x\right]_- = - \min\{x,0\}$ and $\left[x\right]_+ = \max\{x,0\}$.
+Then, in this case $u = u_+ - u_-$ and $\lvert u \rvert = u_+ + u_-$.
+Now, define the following:
+\begin{align*}
+  u &= 3x_1 + 2x_2 - 2600 = u_+ - u_- \\
+  v &= x_1 + x_2 - 1150 = v_+ - v_- \\
+  w &= x_1 - 400 = w_+ - w_-
+\end{align*}
+Using this notation, we can rewrite the optimization problem as: \\
+Minimize $2.5 u_- + 0.3 v_- + 0.2 (w_+ + w_-)$ subject to:
+\begin{align*}
+  3x_1 + 2x_2 - u_+ + u_- &= 2600 \\
+  x_1 + x_2 - v_+ + v_- &= 1150 \\
+  x_1 - w_+ + w_- &= 400 \\
+  2x_1 + x_2 &\leq 1500 \\
+  x_1 + x_2 &\leq 1200 \\
+  x_1 &\leq 500
+\end{align*}
+Thus, we can solve this problem using the Interior Point Functions
+
+#+begin_src python :results output
+  import numpy as np
+  import InteriorPoint as IP
+
+  A = np.zeros((3,8),dtype="float")
+  A[0,0] = -2.0
+  A[0,1] = A[1,0] = A[1,1] = A[2,0] = -1.
+  b = np.array([[-1500, -1200, -500]]).T
+  
+  C = np.array([[3, 2, -1, 1,  0, 0, 0,  0],
+                [1, 1,  0, 0, -1, 1, 0,  0],
+                [1, 0,  0, 0,  0, 0, -1, 1]])
+  d = np.array([[2600, 1150, 400]]).T
+  
+  c = np.array([[0, 0, 0, 2.5, 0, 0.3, 0.2, 0.2]]).T
+  Q = np.zeros((8,8))
+  
+  tol = 1e-8
+  kmax = 10000
+  rho = .9
+  mu0 = 100
+  mumin = 1e-12
+  
+  x,k = IP.InteriorPointBarrier_EqualityInequality(Q,c,A,b,
+                                                   C,d,tol,
+                                                   kmax,rho,
+                                                   mu0,mumin)
+  np.set_printoptions(suppress=True,precision=1)
+  print("Found optimal :\n" + str(x[0:2]))
+  print("Num Iterations: " + str(k))
+#+end_src
+
+#+RESULTS:
+: Found optimal :
+: [[350.]
+:  [800.]]
+: Num Iterations: 245

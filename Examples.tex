@@ -1,4 +1,4 @@
-% Created 2020-02-20 Thu 16:39
+% Created 2020-03-20 Fri 21:08
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -14,23 +14,24 @@
 \usepackage{amssymb}
 \usepackage{capt-of}
 \usepackage{hyperref}
+\author{Nicholas Moore}
 \date{\today}
 \title{}
 \hypersetup{
- pdfauthor={},
+ pdfauthor={Nicholas Moore},
  pdftitle={},
  pdfkeywords={},
  pdfsubject={},
- pdfcreator={Emacs 26.3 (Org mode 9.3.1)}, 
+ pdfcreator={Emacs 26.3 (Org mode 9.3.6)}, 
  pdflang={English}}
 \begin{document}
 
 \tableofcontents
 
 \section{Interior Point Methods}
-\label{sec:org260d252}
+\label{sec:org3bad664}
 \subsection{Linear Programming with Inequality Constraints}
-\label{sec:orgbd73ef3}
+\label{sec:orgaee3af7}
 Solve the following problem:
 
 min \(-10x_1 - 9x_2\) subject to:
@@ -71,14 +72,16 @@ rho = .9
 mu0 = 1e4
 mumin = 1e-8
 
-x,k = IP.InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+x,k = IP.InteriorPointBarrier_EqualityOnly(Q, c, A, b, 
+                                           tol, kmax, rho, 
+                                           mu0, mumin)
 np.set_printoptions(suppress=True,precision=1)
 print("Found optimal :\n" + str(x[0:2]))
 print("Num Iterations: " + str(k))
 \end{verbatim}
 
 \subsection{Transportation Problem}
-\label{sec:org9d67725}
+\label{sec:org5312109}
 We first create a function to handle a general transportation problem and then run it for a particular problem.
 
 Wheat is harvested in the Midwest and stored in grain elevators in three different cities: Kansas City, Omaha, and Des Moines.  These grain elevators spply three flour mills, located in Chicago, St. Louis, and Cincinnati.  Grain is shipped to the mills in railroad cars, each car capable of holding one ton of wheat.  Each grain elevator is able to supply the number of tons of wheat in the following table to the mills on a monthly basis.  Each mill demands the number of tons of wheat per month as detailed in the following table.
@@ -147,7 +150,9 @@ def TransportationProblem(supplyVec, demandVec, costMatrix):
     mu0 = 1e4
     mumin = 1e-8
 
-    x,k = IP.InteriorPointBarrier(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    x,k = IP.InteriorPointBarrier_EqualityOnly(Q, c, A, b, 
+                                               tol, kmax, rho, 
+                                               mu0, mumin)
     return x.reshape(costMatrix.shape),k
 supplyVec = np.array([[150, 175, 275]]).transpose()
 demandVec = np.array([[200, 100, 300]]).transpose()
@@ -156,5 +161,72 @@ costMatrix = np.array([[6, 8, 10],[7, 11, 11],[4, 5, 12]])
 np.set_printoptions(suppress=True,precision=1)
 x, k = TransportationProblem(supplyVec, demandVec, costMatrix)
 print(x)
+\end{verbatim}
+\subsection{Problem Involving Piecewise Objective Function}
+\label{sec:org554ba9a}
+Problem:
+Minimize
+\begin{equation*}
+  2.5 \left[3x_1 + 2x_2 - 2600\right]_- + 0.3 \left[x_1 + x_2 - 1150\right]_- + 0.2 \lvert x_1 - 400 \rvert
+\end{equation*}
+Subject to: 
+\begin{align*}
+  2x_1 + x_2 &\leq 1500 \\
+   x_1 + x_2 &\leq 1200 \\
+   x_1       &\leq  500 \\
+\end{align*}
+
+Solution:
+
+To solve this, first we need to define \(\left[x\right]_- = - \min\{x,0\}\) and \(\left[x\right]_+ = \max\{x,0\}\).
+Then, in this case \(u = u_+ - u_-\) and \(\lvert u \rvert = u_+ + u_-\).
+Now, define the following:
+\begin{align*}
+  u &= 3x_1 + 2x_2 - 2600 = u_+ - u_- \\
+  v &= x_1 + x_2 - 1150 = v_+ - v_- \\
+  w &= x_1 - 400 = w_+ - w_-
+\end{align*}
+Using this notation, we can rewrite the optimization problem as: \\
+Minimize \(2.5 u_- + 0.3 v_- + 0.2 (w_+ + w_-)\) subject to:
+\begin{align*}
+  3x_1 + 2x_2 - u_+ + u_- &= 2600 \\
+  x_1 + x_2 - v_+ + v_- &= 1150 \\
+  x_1 - w_+ + w_- &= 400 \\
+  2x_1 + x_2 &\leq 1500 \\
+  x_1 + x_2 &\leq 1200 \\
+  x_1 &\leq 500
+\end{align*}
+Thus, we can solve this problem using the Interior Point Functions
+
+\begin{verbatim}
+import numpy as np
+import InteriorPoint as IP
+
+A = np.zeros((3,8),dtype="float")
+A[0,0] = -2.0
+A[0,1] = A[1,0] = A[1,1] = A[2,0] = -1.
+b = np.array([[-1500, -1200, -500]]).T
+
+C = np.array([[3, 2, -1, 1,  0, 0, 0,  0],
+              [1, 1,  0, 0, -1, 1, 0,  0],
+              [1, 0,  0, 0,  0, 0, -1, 1]])
+d = np.array([[2600, 1150, 400]]).T
+
+c = np.array([[0, 0, 0, 2.5, 0, 0.3, 0.2, 0.2]]).T
+Q = np.zeros((8,8))
+
+tol = 1e-8
+kmax = 10000
+rho = .9
+mu0 = 100
+mumin = 1e-12
+
+x,k = IP.InteriorPointBarrier_EqualityInequality(Q,c,A,b,
+                                                 C,d,tol,
+                                                 kmax,rho,
+                                                 mu0,mumin)
+np.set_printoptions(suppress=True,precision=1)
+print("Found optimal :\n" + str(x[0:2]))
+print("Num Iterations: " + str(k))
 \end{verbatim}
 \end{document}
