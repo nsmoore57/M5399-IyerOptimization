@@ -745,18 +745,38 @@ if __name__ == "__main__":
     #          2x_1 - 2x_2 + 3x_3 + 3x_4 = 9
     #           x_1 -  x_2 + 2x_3 -  x_4 = 6
     #           x_1, x_2, x_3, x_4 >= 0
-    A = np.array([[1,  2, -1,  1],
-                  [2, -2,  3,  3],
-                  [1, -1,  2, -1]])
-    b = np.array([[0, 9, 6]]).T
-    Q = np.zeros((4,4))
-    c = np.array([[-3, 1, 3, -1]]).T
-    tol = (1e0,1e-9)
+    # A = np.array([[1,  2, -1,  1],
+    #               [2, -2,  3,  3],
+    #               [1, -1,  2, -1]])
+    # b = np.array([[0, 9, 6]]).T
+    # Q = np.zeros((4,4))
+    # c = np.array([[-3, 1, 3, -1]]).T
+    # tol = (1e0,1e-9)
 
-    x,k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-12)
+    # x,k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-12)
+    # print("Found Optimal : \n" + str(x))
+    # print("Num Iterations: " + str(k))
+    # true_answer = np.array([[1, 1, 3, 0]]).T
+    # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
+    # print("Cost of found solution:" + str(np.matmul(c.T,x)))
+    # print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)))
+
+    # Solve the following problem using the predictor-corrector method:
+    # min x_1 + 6x_2 - 7x_3 + x_4 + 5x_5
+    # subj. to 5x_1 - 4x_2 + 13x_3 - 2x_4 + x_5 = 20
+    #           x_1 -  x_2 +  5x_3 -  x_4 + x_5 = 8
+    #           x_1, x_2, x_3, x_4, x_5 >= 0
+    A = np.array([[5, -4, 13, -2, 1],
+                  [1, -1,  5, -1, 1]])
+    b = np.array([[20, 8]]).T
+    Q = np.zeros((5,5))
+    c = np.array([[1, 6, -7, 1, 5]]).T
+    tol = (1e-3,1e-12)
+
+    x,k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14)
     print("Found Optimal : \n" + str(x))
     print("Num Iterations: " + str(k))
-    true_answer = np.array([[1, 1, 3, 0]]).T
+    true_answer = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
     print("Norm of Error is: " + str(LA.norm(x - true_answer)))
     print("Cost of found solution:" + str(np.matmul(c.T,x)))
     print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)))

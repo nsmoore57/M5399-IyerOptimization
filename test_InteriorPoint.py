@@ -92,3 +92,14 @@ def test_Predictor_Corrector():
     true_Opt = np.array([[1, 1, 3, 0]]).T
     assert LA.norm(x - true_Opt) < 10*tol[1] # Should be close to true optimal
     assert LA.norm(np.matmul(A,x)-b) < tol[1] # and should satisfy Ax = b
+
+    A = np.array([[5, -4, 13, -2, 1],
+                  [1, -1,  5, -1, 1]])
+    b = np.array([[20, 8]]).T
+    Q = np.zeros((5,5))
+    c = np.array([[1, 6, -7, 1, 5]]).T
+    tol = (1e-3,1e-12)
+
+    x,k = IP.Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14)
+    # Not sure of the exact solution - solution this code finds has a lower cost than Iyer's "true" solution
+    assert LA.norm(np.matmul(A,x)-b) < tol[1]
