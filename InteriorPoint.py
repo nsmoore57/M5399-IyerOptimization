@@ -512,6 +512,9 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
                  - If a tuple, tol[0] is tolerance for Phase I and
                    tol[1] is tolerance for Phase II
     kmax      -- Maximum steps allowed, used for stopping condition
+                 - If a scalar, then used as kmax for both phases
+                 - If a tuple, kmax[0] is kmax for Phase I and
+                   kmax[1] is kmax for Phase II
     rho       -- Used for decreasing the strength of the barrier
                  - at each iteration mu becomes rho*mu
                  - Only used in Phase 1
@@ -539,6 +542,8 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     # Check if tolerance is tuple or scalar
     if not isinstance(tol, tuple):
         tol = (tol, tol)
+    if not isinstance(kmax, tuple):
+        kmax = (kmax, kmax)
 
     # For convenience in defining the needed matrices
     m,n = A.shape
@@ -554,15 +559,18 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     # - Can use the Newton's Inexact Line Search for this
     Q_p1 = np.eye(n)
     c_p1 = -1*np.ones((n,1))
-    x,lamb,s,iters[1] = _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol[0], kmax, rho, mu0, mumin)
+    x,lamb,s,iters[1] = _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol[0], kmax[0], rho, mu0, mumin)
 
-    # TODO: minimum norm correction to the phase 1 stuff
+    # Better Projection for s and lamb
+    Qxc = np.matmul(Q,x) + c
+    s = np.maximum(0,Qxc) + 1e-4*np.ones(c.shape)
+    lamb = LA.lstsq(A.T, np.minimum(0,Qxc) - 1e-4*np.ones(c.shape), rcond=None)[0]
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x,lamb,s,iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax, mumin)
+    x,lamb,s,iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax[1], mumin)
 
     iters[0] = iters[1] + iters[2]
     return x,iters
@@ -771,12 +779,13 @@ if __name__ == "__main__":
     b = np.array([[20, 8]]).T
     Q = np.zeros((5,5))
     c = np.array([[1, 6, -7, 1, 5]]).T
-    tol = (1e-3,1e-12)
+    tol = (1e-3,1e-14)
+    kmax= (100,1000)
 
-    x,k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14)
+    x,k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14, kmax=kmax)
     print("Found Optimal : \n" + str(x))
     print("Num Iterations: " + str(k))
     true_answer = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
     print("Norm of Error is: " + str(LA.norm(x - true_answer)))
-    print("Cost of found solution:" + str(np.matmul(c.T,x)))
-    print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)))
+    print("Cost of found solution: " + str(np.matmul(c.T,x)[0,0]))
+    print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)[0,0]))
