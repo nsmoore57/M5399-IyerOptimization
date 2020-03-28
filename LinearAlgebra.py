@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.linalg as LA
 
 def forwardSubstitution_LowerTri(L, b):
     """
@@ -7,7 +8,7 @@ def forwardSubstitution_LowerTri(L, b):
     where L is lower triangular and b is n x 1 np.array
     """
     z = np.zeros(b.shape)
-    z[0] = b[0]/L[1,1]
+    z[0] = b[0]/L[0,0]
     for i in range(1,z.shape[0]):
         z[i,0] = (b[i] - np.matmul(L[i,0:i], z[0:i,0]))/L[i,i]
 
@@ -71,17 +72,36 @@ def _house(x):
         v = v/v[0]
     return v, beta
 
+def lowRank_MinNormLS(A,b):
+    """Find the minimum norm least squares solution to a low rank matrix system."""
+    # TODO: Write own qr code
+    # Compute the QR factorization
+    Q,R = LA.qr(A, mode="reduced")
+
+    # TODO: Reduce the dimension of Q to rank p when diagonal elements get too small
+
+    # Solve RR^T z = Q^T b with a Cholesky Decomposition
+    L = LA.cholesky(np.matmul(R,R.T))
+    lamb = forwardSubstitution_LowerTri(L,np.matmul(Q.T,b))
+    z = backSubstitution_UpperTri(L.T.conj(),lamb)
+
+    return np.matmul(R.T, z)
 
 if __name__ == "__main__":
-    import numpy.linalg as LA
     A = np.array([[3, 10, 2, 3],[0, 0, 5, 7], [1, 4, 4, 7], [9, 4, 7, 1], [7, 8, 7, 1], [3, 8, 8, 5]], dtype="float")
-    b = np.array([8, 2, 5, 7, 9, 10]).T
+    b = np.array([[8, 2, 5, 7, 9, 10]],dtype="float").T
     # print(LA.norm(np.matmul(A,LA.lstsq(A,b,rcond=None)[0])-b))
-    x = LSQR(A,b)
-    Ax = np.matmul(A,x)
-    b.shape = (-1,1)
-    # print(b)
-    # print(np.matmul(A,x) - b.reshape((-1,1)))
-    # print(np.matmul(A,x))
-    print(LA.norm(np.matmul(A,x)-b))
+    # x = LSQR(A,b)
+    # Ax = np.matmul(A,x)
+    # b.shape = (-1,1)
+    # # print(b)
+    # # print(np.matmul(A,x) - b.reshape((-1,1)))
+    # # print(np.matmul(A,x))
+    # print(LA.norm(np.matmul(A,x)-b))
 
+    A = np.array([[2, -1, 1, -3],[0, 1, -1, -1,]], dtype="float")
+    b = np.array([[3, 1]], dtype="float").T
+
+    x = lowRank_MinNormLS(A,b)
+    print(x)
+    print(LA.norm(np.matmul(A,x)-b))

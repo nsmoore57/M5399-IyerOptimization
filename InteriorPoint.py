@@ -2,6 +2,7 @@
 """Module for Interior Point Methods"""
 import numpy as np
 import numpy.linalg as LA
+import LinearAlgebra as myLA
 
 # Define Exceptions
 class IPError(Exception):
@@ -109,8 +110,6 @@ def _DimensionsCompatible_EqualityOnly(Q, c, A, b):
     if c.shape[1] != 1: return False, "c must be a column vector"
     if b.shape[1] != 1: return False, "b msut be a column vector"
     return True, "No error"
-
-
 
 def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
     """
@@ -556,13 +555,17 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     c_p1 = -1*np.ones((n,1))
     x,lamb,s,iters[1] = _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol[0], kmax, rho, mu0, mumin)
 
-    # TODO: minimum norm correction to the phase 1 stuff
+    # The above Phase one doesn't take Q or c into account, in particular with regards to lamb and s
+    # Here so improve the point from Phase I for s and lamb
+    Qxc = np.matmul(Q,x) + c
+    s0 = np.maximum(Qxc,0) + 1e-4*np.ones(c.shape)
+    lamb0 = myLA.lowRank_MinNormLS(A.T,-np.minimum(Qxc,0) - 1e-4*np.ones(c.shape))
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x,lamb,s,iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax, mumin)
+    x,lamb,s,iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x, lamb0, s0, tol[1], kmax, mumin)
 
     iters[0] = iters[1] + iters[2]
     return x,iters
