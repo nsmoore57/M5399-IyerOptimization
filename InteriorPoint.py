@@ -559,35 +559,37 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
         kmax = (kmax, kmax)
 
     # For convenience in defining the needed matrices
-    m,n = A.shape
+    m, n = A.shape
 
     # To track the total number of iterations for both phases
-    iters = [0,0,0]
+    iters = [0, 0, 0]
 
-    x = np.ones((n,1))
-    lamb = np.zeros((m,1))
-    s = np.ones((n,1))
+    x = np.ones((n, 1))
+    lamb = np.zeros((m, 1))
+    s = np.ones((n, 1))
 
     # Phase I - find a solution in the feasible region
     # - Can use the Newton's Inexact Line Search for this
     Q_p1 = np.eye(n)
-    c_p1 = -1*np.ones((n,1))
-    x,lamb,s,iters[1] = _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol[0], kmax[0], rho, mu0, mumin)
+    c_p1 = -1*np.ones((n, 1))
+    x, lamb, s, iters[1] = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s, tol[0], kmax[0], rho, mu0, mumin)
 
     # The above Phase one doesn't take Q or c into account, in particular with regards to lamb and s
     # Here so improve the point from Phase I for s and lamb
-    Qxc = np.matmul(Q,x) + c
-    s = np.maximum(Qxc,0) + 1e-4*np.ones(c.shape)
-    lamb = myLA.lowRank_MinNormLS(A.T,-np.minimum(Qxc,0) - 1e-4*np.ones(c.shape))
+    Qxc = np.matmul(Q, x) + c
+    s = np.maximum(Qxc, 0) + 1e-4*np.ones(c.shape)
+    lamb = myLA.lowRank_MinNormLS(A.T, -np.minimum(Qxc, 0) - 1e-4*np.ones(c.shape))
+
+    # print("Norm of residual from feasible point: ", LA.norm(np.matmul(A,x)-b))
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x,lamb,s,iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax[1], mumin)
+    x, lamb, s, iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax[1], mumin)
 
     iters[0] = iters[1] + iters[2]
-    return x,iters
+    return x, iters
 
 def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
     """
@@ -783,6 +785,8 @@ if __name__ == "__main__":
     # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
     # print("Cost of found solution:" + str(np.matmul(c.T, x)))
     # print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)))
+    # print("Residual of found solution: ", LA.norm(np.matmul(A,x)-b))
+    # print("Residual of 'true' solution: ", LA.norm(np.matmul(A,true_answer)-b))
 
     # Solve the following problem using the predictor-corrector method:
     # min x_1 + 6x_2 - 7x_3 + x_4 + 5x_5
@@ -794,13 +798,14 @@ if __name__ == "__main__":
     b = np.array([[20, 8]]).T
     Q = np.zeros((5, 5))
     c = np.array([[1, 6, -7, 1, 5]]).T
-    tol = (1e-15, 1e-14)
+    tol = (1e-2, 1e-12)
     kmax = (1000, 1000)
 
-    x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14, kmax=kmax)
+    x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-8, kmax=kmax)
     print("Found Optimal : \n" + str(x))
     print("Num Iterations: " + str(k))
     true_answer = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
-    print("Norm of Error is: " + str(LA.norm(x - true_answer)))
     print("Cost of found solution: " + str(np.matmul(c.T, x)[0, 0]))
     print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)[0, 0]))
+    print("Residual of found solution: ", LA.norm(np.matmul(A,x)-b))
+    print("Residual of 'true' solution: ", LA.norm(np.matmul(A,true_answer)-b))
