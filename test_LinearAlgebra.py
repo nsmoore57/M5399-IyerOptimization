@@ -1,3 +1,5 @@
+"""Tests the LinearAlgebra module"""
+
 import numpy as np
 import LinearAlgebra as testLA
 

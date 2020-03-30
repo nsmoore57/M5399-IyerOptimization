@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as LA
 import Newton
 
-def Rosenbrock(a,x):
+def Rosenbrock(a, x):
     """The Rosenbrock function"""
     return (a-x[0])**2 + 100*(x[1]-x[0]**2)**2
 
@@ -73,26 +73,26 @@ def test_GradDescent_BB():
     kmax = 1e3
     CD_tao = 1e-5
 
-    x0 = np.array([[3.],[3.]])
+    x0 = np.array([[3.], [3.]])
 
-    x,k = Newton.GradDescent_BB(Rosenbrock1, "CD", x0, tol, kmax,CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_BB(Rosenbrock1, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock1(x)) < tol*(1.1 + np.abs(Rosenbrock1(x)))
-    x,k = Newton.GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax,CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock2(x)) < tol*(1.1 + np.abs(Rosenbrock2(x)))
-    x,k = Newton.GradDescent_BB(Rosenbrock3, "CD", x0, tol, kmax,CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_BB(Rosenbrock3, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock3(x)) < tol*(1.1 + np.abs(Rosenbrock3(x)))
 
-    # (0,0) starting position can give BB method trouble
-    x0 = np.array([[0.],[0.]])
-    x,k = Newton.GradDescent_BB(Rosenbrock1, "CD", x0, tol, kmax,CD_tao=CD_tao)
+    # (0, 0) starting position can give BB method trouble
+    x0 = np.array([[0.], [0.]])
+    x, _ = Newton.GradDescent_BB(Rosenbrock1, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock1(x)) < tol*(1.1 + np.abs(Rosenbrock1(x)))
-    x,k = Newton.GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax,CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock2(x)) < tol*(1.1 + np.abs(Rosenbrock2(x)))
-    x,k = Newton.GradDescent_BB(Rosenbrock3, "CD", x0, tol, kmax,CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_BB(Rosenbrock3, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock3(x)) < tol*(1.1 + np.abs(Rosenbrock3(x)))
-    x,k = Newton.GradDescent_BB(TestFunc1, "CD", x0, tol, kmax, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_BB(TestFunc1, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc1(x)) < tol*(1.1 + np.abs(TestFunc1(x)))
-    x,k = Newton.GradDescent_BB(TestFunc2, "CD", x0, tol, kmax, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_BB(TestFunc2, "CD", x0, tol, kmax, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc2(x)) < tol*(1.1 + np.abs(TestFunc2(x)))
 
 def test_GradDescent_ILS():
@@ -104,19 +104,19 @@ def test_GradDescent_ILS():
     a_high = 0.99
     N = 25
     CD_tao = 1e-5
-    x0 = np.array([[3.],[3.]])
+    x0 = np.array([[3.], [3.]])
 
-    x,k = Newton.GradDescent_ILS(Rosenbrock1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_ILS(Rosenbrock1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock1(x)) < tol*(1.1 + np.abs(Rosenbrock1(x)))
-    x,k = Newton.GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock2(x)) < tol*(1.1 + np.abs(Rosenbrock2(x)))
-    x,k = Newton.GradDescent_ILS(Rosenbrock3, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_ILS(Rosenbrock3, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock3(x)) < tol*(1.1 + np.abs(Rosenbrock3(x)))
 
-    x0 = np.array([[0.],[0.]])
-    x,k = Newton.GradDescent_ILS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x0 = np.array([[0.], [0.]])
+    x, _ = Newton.GradDescent_ILS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc1(x)) < tol*(1.1 + np.abs(TestFunc1(x)))
-    x,k = Newton.GradDescent_ILS(TestFunc2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_ILS(TestFunc2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc2(x)) < tol*(1.1 + np.abs(TestFunc2(x)))
 
 def test_GradDescent_Armijo():
@@ -130,21 +130,26 @@ def test_GradDescent_Armijo():
     c_high = 0.8
     CD_tao = 1e-5
 
-    x0 = np.array([[3.],[3.]])
+    x0 = np.array([[3.], [3.]])
 
-    x,k = Newton.GradDescent_Armijo(Rosenbrock1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_Armijo(Rosenbrock1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high,
+                                     N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock1(x)) < tol*(1.1 + np.abs(Rosenbrock1(x)))
 
-    x,k = Newton.GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high,
+                                     N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock2(x)) < tol*(1.1 + np.abs(Rosenbrock2(x)))
 
-    x,k = Newton.GradDescent_Armijo(Rosenbrock3, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_Armijo(Rosenbrock3, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high,
+                                     N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock3(x)) < tol*(1.1 + np.abs(Rosenbrock3(x)))
 
-    x0 = np.array([[0.],[0.]])
-    x,k = Newton.GradDescent_Armijo(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
+    x0 = np.array([[0.], [0.]])
+    x, _ = Newton.GradDescent_Armijo(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high,
+                                     N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc1(x)) < tol*(1.1 + np.abs(TestFunc1(x)))
-    x,k = Newton.GradDescent_Armijo(TestFunc2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
+    x, _ = Newton.GradDescent_Armijo(TestFunc2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high,
+                                     N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc2(x)) < tol*(1.1 + np.abs(TestFunc2(x)))
 
 def test_BGFS():
@@ -158,15 +163,15 @@ def test_BGFS():
 
     x0 = np.array([[3], [3]], dtype="float")
 
-    x,k = Newton.BFGS(Rosenbrock1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.BFGS(Rosenbrock1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock1(x)) < tol*(1.1 + np.abs(Rosenbrock1(x)))
-    x,k = Newton.BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock2(x)) < tol*(1.1 + np.abs(Rosenbrock2(x)))
-    x,k = Newton.BFGS(Rosenbrock3, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.BFGS(Rosenbrock3, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(GRosenbrock3(x)) < tol*(1.1 + np.abs(Rosenbrock3(x)))
 
-    x0 = np.array([[0.],[0.]])
-    x,k = Newton.BFGS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x0 = np.array([[0.], [0.]])
+    x, _ = Newton.BFGS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc1(x)) < tol*(1.1 + np.abs(TestFunc1(x)))
-    x,k = Newton.BFGS(TestFunc2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, _ = Newton.BFGS(TestFunc2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     assert LA.norm(Grad_TestFunc2(x)) < tol*(1.1 + np.abs(TestFunc2(x)))

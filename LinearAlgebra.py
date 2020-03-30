@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+""" This module is a library of functions for completing linear algebra and related routines """
+
 import numpy as np
 import numpy.linalg as LA
 
@@ -8,9 +11,9 @@ def forwardSubstitution_LowerTri(L, b):
     where L is lower triangular and b is n x 1 np.array
     """
     z = np.zeros(b.shape)
-    z[0] = b[0]/L[0,0]
-    for i in range(1,z.shape[0]):
-        z[i,0] = (b[i] - np.matmul(L[i,0:i], z[0:i,0]))/L[i,i]
+    z[0] = b[0]/L[0, 0]
+    for i in range(1, z.shape[0]):
+        z[i, 0] = (b[i] - np.matmul(L[i, 0:i], z[0:i, 0]))/L[i, i]
 
     return z
 
@@ -21,9 +24,9 @@ def backSubstitution_UpperTri(U, b):
     where U is upper triangular and b is a n x 1 np.array
     """
     z = np.zeros(b.shape)
-    z[-1] = b[-1]/U[-1,-1]
-    for i in range(z.shape[0]-1,-1,-1):
-        z[i,0] = (b[i] - np.matmul(U[i,i+1:], z[i+1:,0]))/U[i,i]
+    z[-1] = b[-1]/U[-1, -1]
+    for i in range(z.shape[0]-1, -1, -1):
+        z[i, 0] = (b[i] - np.matmul(U[i, i+1:], z[i+1:, 0]))/U[i, i]
 
     return z
 
@@ -35,30 +38,31 @@ def householderQR(A):
 
     Returns a vector containing the beta values corresponding to each householder vector
     """
-    m,n = A.shape
+    m, n = A.shape
     beta = np.empty(n)
     for j in range(n):
-        [v, beta[j]] = _house(A[j:,j])
-        A[j:,j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.T),A[j:,j:])
+        [v, beta[j]] = _house(A[j:, j])
+        A[j:, j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v, v.T), A[j:, j:])
         if j < m-1:
-            A[j+1:,j] = v[1:m-j]
+            A[j+1:, j] = v[1:m-j]
         # print(A)
     return beta
 
-def LSQR(A,b):
-    m,n = A.shape
+def LSQR(A, b):
+    """Completes a least squares solve using the householderQR decomp"""
+    m, n = A.shape
     A_copy = A.copy()
     beta = householderQR(A_copy)
     b_copy = b.copy()
 
     for j in range(n):
-         v = np.hstack(([1.0],A_copy[j+1:,j])).T
-         b_copy[j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v,v.T),b_copy[j:])
+        v = np.hstack(([1.0], A_copy[j+1:, j])).T
+        b_copy[j:] = np.matmul(np.eye(m-j) - beta[j]*np.matmul(v, v.T), b_copy[j:])
 
-    return backSubstitution_UpperTri(A_copy[:n,:n], b_copy[:n].reshape((-1,1)))
+    return backSubstitution_UpperTri(A_copy[:n, :n], b_copy[:n].reshape((-1, 1)))
 
 def _house(x):
-    sigma = np.matmul(x[1:].T,x[1:])
+    sigma = np.matmul(x[1:].T, x[1:])
     v = x.copy()
     if sigma == 0:
         beta = 0
@@ -72,24 +76,29 @@ def _house(x):
         v = v/v[0]
     return v, beta
 
-def lowRank_MinNormLS(A,b):
+def lowRank_MinNormLS(A, b):
     """Find the minimum norm least squares solution to a low rank matrix system."""
     # TODO: Write own qr code
     # Compute the QR factorization
-    Q,R = LA.qr(A, mode="reduced")
+    Q, R = LA.qr(A, mode="reduced")
 
     # TODO: Reduce the dimension of Q to rank p when diagonal elements get too small
 
     # Solve RR^T z = Q^T b with a Cholesky Decomposition
-    L = LA.cholesky(np.matmul(R,R.T))
-    lamb = forwardSubstitution_LowerTri(L,np.matmul(Q.T,b))
-    z = backSubstitution_UpperTri(L.T.conj(),lamb)
+    L = LA.cholesky(np.matmul(R, R.T))
+    lamb = forwardSubstitution_LowerTri(L, np.matmul(Q.T, b))
+    z = backSubstitution_UpperTri(L.T.conj(), lamb)
 
     return np.matmul(R.T, z)
 
 if __name__ == "__main__":
-    A = np.array([[3, 10, 2, 3],[0, 0, 5, 7], [1, 4, 4, 7], [9, 4, 7, 1], [7, 8, 7, 1], [3, 8, 8, 5]], dtype="float")
-    b = np.array([[8, 2, 5, 7, 9, 10]],dtype="float").T
+    A = np.array([[3, 10, 2, 3],
+                  [0, 0, 5, 7],
+                  [1, 4, 4, 7],
+                  [9, 4, 7, 1],
+                  [7, 8, 7, 1],
+                  [3, 8, 8, 5]], dtype="float")
+    b = np.array([[8, 2, 5, 7, 9, 10]], dtype="float").T
     # print(LA.norm(np.matmul(A,LA.lstsq(A,b,rcond=None)[0])-b))
     # x = LSQR(A,b)
     # Ax = np.matmul(A,x)
@@ -99,9 +108,10 @@ if __name__ == "__main__":
     # # print(np.matmul(A,x))
     # print(LA.norm(np.matmul(A,x)-b))
 
-    A = np.array([[2, -1, 1, -3],[0, 1, -1, -1,]], dtype="float")
+    A = np.array([[2, -1, 1, -3],
+                  [0, 1, -1, -1,]], dtype="float")
     b = np.array([[3, 1]], dtype="float").T
 
-    x = lowRank_MinNormLS(A,b)
+    x = lowRank_MinNormLS(A, b)
     print(x)
-    print(LA.norm(np.matmul(A,x)-b))
+    print(LA.norm(np.matmul(A, x)-b))

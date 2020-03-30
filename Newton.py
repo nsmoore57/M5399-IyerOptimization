@@ -70,10 +70,9 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
         except LA.LinAlgError:
             # Most likely here because the above H is singular
             # Therefore we regularize by adding a small (1e-7) multiple of I:
-            theta = 1e-7
-            dk = LA.solve(H + theta*np.eye(xk.shape[0]), -f_xk)
+            dk = LA.solve(H + reg_const*np.eye(xk.shape[0]), -f_xk)
 
-        z = c*LA.norm(np.matmul(f_xk.T,H))*LA.norm(dk)
+        z = c*LA.norm(np.matmul(f_xk.T, H))*LA.norm(dk)
 
         # Solve the step size using the method by Stoer and Bulirsch
         j = 0
@@ -109,7 +108,7 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
 
-def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
+def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao=1e-5):
     """
     Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
     Uses either the real gradient (passed as an argument) or central
@@ -142,9 +141,9 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
     """
 
     # Use CentralDifferences to approximate the gradient
-    if type(gradq) == str and gradq == "CD":
+    if isinstance(gradq, str) and gradq == "CD":
         # Lambda function so that we can pass function and perturbation through
-        gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
+        gradq = (lambda x: _CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
         raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
@@ -182,7 +181,7 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao = 1e-5):
     return xnew, k
 
 
-def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
+def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao=1e-5):
     """
     Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
     Uses either the real gradient (passed as an argument) or a central difference approximation
@@ -231,9 +230,9 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     """
 
     # Use CentralDifferences to approximate the gradient
-    if type(gradq) == str and gradq == "CD":
+    if isinstance(gradq, str) and gradq == "CD":
         # Lambda function so that we can pass function and perturbation through
-        gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
+        gradq = (lambda x: _CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
         raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
@@ -264,14 +263,15 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
             phi = q(xk - alpha[i]*normalized_gq_cache) - q_cache
 
             # Want the minimum phi value
-            if phimin == None or phi < phimin:
+            if phimin is None or phi < phimin:
                 phimin = phi
                 imin = i
 
         # Not good, probably a step size issue
         if phimin > 0:
             # return xk, k
-            raise NonConvergenceError("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
+            raise NonConvergenceError("No more steps to take downward, don't trust answer.\
+                                       Probably a step size issue.  Consider increasing N")
 
         # Update xk
         xk -= alpha[imin]*(gq_cache/n_gq_cache)
@@ -294,7 +294,7 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
 
-def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_low=0.1, c_high=0.9, CD_tao = 1e-5):
+def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_low=0.1, c_high=0.9, CD_tao=1e-5):
     """
     Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
     Uses either the real gradient (passed as an argument) or a central difference approximation
@@ -343,13 +343,14 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
     c_high = 0.8
     CD_tao = 1e-5
 
-    print(GradDescent_Armijo(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao))
+    print(GradDescent_Armijo(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high,
+                             N=N, c_low=c_low, c_high=c_high, CD_tao=CD_tao))
     """
 
     # Use CentralDifferences to approximate the gradient
-    if type(gradq) == str and gradq == "CD":
+    if isinstance(gradq, str) and gradq == "CD":
         # Lambda function so that we can pass function and perturbation through
-        gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
+        gradq = (lambda x: _CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
         raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
@@ -380,14 +381,15 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
             l = -c_high*alpha[i]*n_gq_cache*n_gq_cache
 
             # Want the minimum phi value s.t. phi <= h and phi >= l
-            if (phi <= h and phi >= l) and (phimin == None or phi < phimin):
+            if (l <= phi <= h) and (phimin is None or phi < phimin):
                 phimin = phi
                 imin = i
 
         # Not good, probably a step size issue
-        if phimin == None or phimin > 0:
+        if phimin is None or phimin > 0:
             # return xk, k
-            raise NonConvergenceError("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
+            raise NonConvergenceError("No more steps to take downward, don't trust answer. \
+                                       Probably a step size issue.  Consider increasing N")
 
         # Update xk
         xk -= alpha[imin]*gq_cache
@@ -409,7 +411,7 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
 
-def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
+def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao=1e-5):
     """
     Run BFGS Method to find the approximate location of of a solution to gradq(x) = 0
     Uses either the real gradient (passed as an argument) or a central difference approximation
@@ -458,9 +460,9 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
     """
 
     # Use CentralDifferences to approximate the gradient
-    if type(gradq) == str and gradq == "CD":
+    if isinstance(gradq, str) and gradq == "CD":
         # Lambda function so that we can pass function and perturbation through
-        gradq = (lambda x:_CentralDifferencesGradient(q, x, CD_tao))
+        gradq = (lambda x: _CentralDifferencesGradient(q, x, CD_tao))
     # If not a function and not "CD" then error
     elif not callable(gradq):
         raise InvalidArgumentError("Undefined gradq - should be a callable or CD")
@@ -496,15 +498,16 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
             phi = q(x + alpha[i]*normalized_d) - q_cache
 
             # Want the minimum phi value
-            if phimin == None or phi < phimin:
+            if phimin is None or phi < phimin:
                 phimin = phi
                 imin = i
 
         # Not good, probably a step size issue
         if phimin > 0:
             # For debugging purposes
-            # return x,k
-            raise NonConvergenceError("No more steps to take downward, don't trust answer. Probably a step size issue.  Consider increasing N")
+            # return x, k
+            raise NonConvergenceError("No more steps to take downward, don't trust answer. \
+                                       Probably a step size issue.  Consider increasing N")
 
         s = alpha[imin]*(normalized_d)
         y = gradq(x + s) - gq_cache
@@ -518,11 +521,11 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
 
         # Temporary variables to make the H update a little simpler
         # t stands for transpose so sty is s.transpose * y
-        sty = np.matmul(s.T,y)
-        ytHy = np.matmul(y.T,np.matmul(H,y))
-        sst = np.matmul(s,s.T)
-        Hyst = np.matmul(np.matmul(H,y),s.T)
-        sytH = np.matmul(s,np.matmul(y.T,H))
+        sty = np.matmul(s.T, y)
+        ytHy = np.matmul(y.T, np.matmul(H, y))
+        sst = np.matmul(s, s.T)
+        Hyst = np.matmul(np.matmul(H, y), s.T)
+        sytH = np.matmul(s, np.matmul(y.T, H))
 
         # Update H
         H += ((sty + ytHy)/(sty*sty))*(sst) - (Hyst + sytH)/(sty)
@@ -530,13 +533,13 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao = 1e-5):
         # Increase iteration count
         k += 1
 
-        d = -np.matmul(H,gq_cache)
+        d = -np.matmul(H, gq_cache)
         normalized_d = d/LA.norm(d)
 
     # If kmax gets exceeded, we can't trust the answer so raise error
     if k >= kmax:
         # For debugging purposes
-        # return x,k
+        # return x, k
         raise NonConvergenceError("Kmax exceeded, consider raise kmax")
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
@@ -552,7 +555,7 @@ def _CentralDifferencesJacobian(f, x, tao):
     x    -- The point to approximate the Jacobian around
     tao  -- 2*tao is length of the secant line between central difference points
 
-    H(:,i) = 1/(2tao) (f(x + tao*ei) - f(x - tao*ei))
+    H(:, i) = 1/(2tao) (f(x + tao*ei) - f(x - tao*ei))
     """
 
     # Preallocate a matrix
@@ -594,8 +597,8 @@ def _CentralDifferencesGradient(f, x, tao):
 
 # Testing from module load
 if __name__ == "__main__":
-    import time
-    def Rosenbrock(a,x):
+    def Rosenbrock(a, x):
+        """Rosenbrock function for testing"""
         return (a-x[0])**2 + 100*(x[1]-x[0]**2)**2
 
     def TestFunc1(x):
@@ -624,35 +627,35 @@ if __name__ == "__main__":
     # t0 = time.time()
     # x, k = GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     # t1 = time.time()
-    # print("Norm of Error:" + str(LA.norm(x - np.array([[2.],[4.]]))))
+    # print("Norm of Error:" + str(LA.norm(x - np.array([[2.], [4.]]))))
     # print("Number of Iterations: " + str(k))
     # print("Total Time: " + str(t1-t0))
 
     # print("Testing ILS:")
     # t0 = time.time()
-    # x,k = GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    # x, k = GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     # t1 = time.time()
-    # print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
+    # print("Norm of Error: " + str(LA.norm(x-np.array([[2.], [4.]]))))
     # print("Number of Iterations: " + str(k))
     # print("Total Time: " + str(t1-t0))
 
     # print("Testing BB:")
     # t0 = time.time()
-    # x,k = GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax)
+    # x, k = GradDescent_BB(Rosenbrock2, "CD", x0, tol, kmax)
     # t1 = time.time()
-    # print("Norm of Error: " + str(LA.norm(x - np.array([[2.],[4.]]))))
+    # print("Norm of Error: " + str(LA.norm(x - np.array([[2.], [4.]]))))
     # print("Number of Iterations: " + str(k))
     # print("Total Time: " + str(t1-t0))
 
     # print("Testing BFGS:")
     # t0 = time.time()
-    # x,k = BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    # x, k = BFGS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     # t1 = time.time()
-    # print("Norm of Error: " + str(LA.norm(x-np.array([[2.],[4.]]))))
+    # print("Norm of Error: " + str(LA.norm(x-np.array([[2.], [4.]]))))
     # print("Number of Iterations: " + str(k))
     # print("Total Time: " + str(t1-t0))
 
-    x,k = BFGS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    x, k = BFGS(TestFunc1, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     print(x)
-    print("Norm of Error: " + str(LA.norm(x-np.array([[-1./3],[-0.5]]))))
+    print("Norm of Error: " + str(LA.norm(x-np.array([[-1./3], [-0.5]]))))
     print("Number of Iterations: " + str(k))

@@ -17,7 +17,6 @@ class DimensionMismatchError(IPError):
     """For errors involving incorrect dimensions"""
     pass
 
-
 def Barrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9):
     """
     Run Interior Point Barrier Method to solve the quadratic programming problem:
@@ -56,10 +55,10 @@ def Barrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9
 
     Example:
     # Set up and solve a linear programming problem (Q = 0)
-    A = np.array([[1, 2, -1, 1],[2, -2, 3, 3],[1, -1, 2, -1]],dtype="float")
+    A = np.array([[1, 2, -1, 1], [2, -2, 3, 3], [1, -1, 2, -1]], dtype="float")
     b = np.array([[0, 9, 6]]).T
     c = np.array([[-3, 1, 3, -1]]).T
-    Q = np.zeros((4,4))
+    Q = np.zeros((4, 4))
     tol = 1e-5
 
     x, k = InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol)
@@ -74,32 +73,32 @@ def Barrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9
         tol = (tol, tol)
 
     # For convenience in defining the needed matrices
-    m,n = A.shape
+    m, n = A.shape
 
     # To track the total number of iterations for both phases
     totalk = 0
 
     # Phase I - find a solution in the feasible region
-    x = np.ones((n,1))
-    lamb = np.zeros((m,1))
-    s = np.ones((n,1))
+    x = np.ones((n, 1))
+    lamb = np.zeros((m, 1))
+    s = np.ones((n, 1))
 
 
     if np.count_nonzero(Q) != 0:
         print("Running Phase 1")
         Q_p1 = np.eye(n)
-        c_p1 = -1*np.ones((n,1))
-        x,lamb,s,k = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s, tol[0], kmax, rho, mu0, mumin)
+        c_p1 = -1*np.ones((n, 1))
+        x, lamb, s, k = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s, tol[0], kmax, rho, mu0, mumin)
         totalk += k
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x,lamb,s,k = _Barrier_Worker_EqualityOnly(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax, rho, mu0, mumin)
+    x, lamb, s, k = _Barrier_Worker_EqualityOnly(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax, rho, mu0, mumin)
     totalk += k
 
-    return x,totalk
+    return x, totalk
 
 def _DimensionsCompatible_EqualityOnly(Q, c, A, b):
     """Check to make sure the dimensions of a quadratic programming problem are compatible"""
@@ -122,27 +121,27 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
     """
 
     def Jacobian():
-        """Jacobian of the function F(x,lamb,s) below"""
-        return np.block([[A,              np.zeros((m,m+n))],
+        """Jacobian of the function F(x, lamb, s) below"""
+        return np.block([[A,              np.zeros((m, m+n))],
                          [-1*Q,           A.T,             np.eye(n)],
-                         [np.diagflat(s), np.zeros((n,m)), np.diagflat(x)]])
+                         [np.diagflat(s), np.zeros((n, m)), np.diagflat(x)]])
 
     def F(Fx, Fs, Flamb):
         """Used in the Barrier method to calculate the overall system value"""
-        m,n = A.shape
-        F_row1 = np.matmul(A,Fx) - b
-        F_row2 = np.matmul(-Q,Fx) + np.matmul(A.T,Flamb) + Fs - c
-        F_row3 = np.array([[Fx[i,0]*Fs[i,0]] for i in range(n)]) - mu*np.ones((n,1))
+        _, n = A.shape
+        F_row1 = np.matmul(A, Fx) - b
+        F_row2 = np.matmul(-Q, Fx) + np.matmul(A.T, Flamb) + Fs - c
+        F_row3 = np.array([[Fx[i, 0]*Fs[i, 0]] for i in range(n)]) - mu*np.ones((n, 1))
         return np.vstack((F_row1, F_row2, F_row3))
 
     # For convenience
-    m,n = A.shape
+    m, n = A.shape
     mu = mu0
 
     k = 1
 
     # Cache frequently needed values
-    r = -F(x,s,lamb)
+    r = -1*F(x, s, lamb)
     normr = LA.norm(r)**2
 
     while np.sqrt(normr) > tol and k < kmax and mu > mumin:
@@ -150,14 +149,14 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
         J = Jacobian()
 
         # Solve Jd = r using least squares method
-        d = LA.lstsq(J,r,rcond=None)[0]
+        d = LA.lstsq(J, r, rcond=None)[0]
 
         # Split the d apart into the different component pieces
         dx = d[:n]
         dlamb = d[n:n+m]
         ds = d[n+m:]
 
-        z = 0.9*LA.norm(np.matmul(r.T,J))*LA.norm(d)
+        z = 0.9*LA.norm(np.matmul(r.T, J))*LA.norm(d)
 
         # Select the largest alpha_0 with 0 <= alpha_0 <=1 so that x + alpha_0*dx > 0 and s + alpha*ds > 0
         if all(v > 0 for v in dx) and all(v > 0 for v in ds):
@@ -171,18 +170,18 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
             for i in range(dx.shape[0]):
                 if dx[i] < 0:
                     t = -x[i]/dx[i]
-                    if alpha_bar == None or t < alpha_bar:
+                    if alpha_bar is None or t < alpha_bar:
                         alpha_bar = t
             # search for min(-sk[i]/dsk[i]) among i s.t. ds[i] < 0
             for i in range(ds.shape[0]):
                 if ds[i] < 0:
                     t = -s[i]/ds[i]
-                    if alpha_bar == None or t < alpha_bar:
+                    if alpha_bar is None or t < alpha_bar:
                         alpha_bar = t
 
-        # alpha_bar is the distance to the boundary (or 1 if we are moving away from the boundary, 
+        # alpha_bar is the distance to the boundary (or 1 if we are moving away from the boundary,
         # want a little bit on the inside of the boundary
-        alpha_0 = 0.99995*min(alpha_bar,1)
+        alpha_0 = 0.99995*min(alpha_bar, 1)
 
         # Now we need to find the "best" Newton step size (minimizes F along the direction of d)
         # Set L and R
@@ -221,7 +220,7 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
         mu = rho*mu
 
         # Update cache
-        r = -F(x, s, lamb)
+        r = -1*F(x, s, lamb)
         normr = LA.norm(r)**2
 
     if k > kmax:
@@ -229,7 +228,7 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
     if mu < mumin:
         raise NonConvergenceError("mu became smaller than mumin before reaching convergence. Consider lowering mumin")
 
-    return x,lamb,s,k
+    return x, lamb, s, k
 
 def Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9):
     """
@@ -281,8 +280,8 @@ def Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e2
     A = np.array([[-1, -3, -2], [0, 2, 1]])
     b = np.array([[-3, -1]]).T
     c = np.array([[2, 3, 6]]).T
-    Q = np.zeros((3,3))
-    C = np.array([[1, -1, 1],[2, 2, -3]])
+    Q = np.zeros((3, 3))
+    C = np.array([[1, -1, 1], [2, 2, -3]])
     d = np.array([[2, 0]]).T
     tol = 1e-8
     kmax = 10000
@@ -290,10 +289,10 @@ def Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e2
     mu0 = 1e4
     mumin = 1e-9
 
-    x,k = InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
+    x, k = InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax, rho, mu0, mumin)
     print("Found Optimal : \n" + str(x))
     print("Num Iterations: " + str(k))
-    true_answer = np.array([[1.2,0,0.8]]).T
+    true_answer = np.array([[1.2, 0, 0.8]]).T
     print("Norm of Error is: " + str(LA.norm(x - true_answer)))
     """
 
@@ -307,34 +306,38 @@ def Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e2
         tol = (tol, tol)
 
     # For convenience in defining the needed matrices
-    m,n = A.shape
-    p,_ = C.shape
+    m, n = A.shape
+    p, _ = C.shape
 
     # To track the total number of iterations for both phases
     totalk = 0
 
-    x = np.ones((n,1))
-    lamb = np.zeros((p,1))
-    s = np.ones((n,1))
-    t = np.ones((m,1))
-    theta = np.ones((m,1))
+    x = np.ones((n, 1))
+    lamb = np.zeros((p, 1))
+    s = np.ones((n, 1))
+    t = np.ones((m, 1))
+    theta = np.ones((m, 1))
 
     # Phase I - find a solution in the feasible region - if required
     if np.count_nonzero(Q) != 0:
         print("Running Phase 1")
         Q_p1 = np.eye(n)
-        c_p1 = -1*np.ones((n,1))
-        x,lamb,s,t,theta,k = _Barrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x, lamb, s, t, theta, tol[0], kmax, rho, mu0, mumin)
+        c_p1 = -1*np.ones((n, 1))
+        x, lamb, s, t, theta, k = _Barrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x,
+                                                                     lamb, s, t, theta, tol[0],
+                                                                     kmax, rho, mu0, mumin)
         totalk += k
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x,lamb,s,t,theta,k = _Barrier_Worker_EqualityInequality(Q_p2, c_p2, A, b, C, d, x, lamb, s, t, theta, tol[1], kmax, rho, mu0, mumin)
+    x, lamb, s, t, theta, k = _Barrier_Worker_EqualityInequality(Q_p2, c_p2, A, b, C, d, x, lamb,
+                                                                 s, t, theta, tol[1], kmax, rho,
+                                                                 mu0, mumin)
     totalk += k
 
-    return x,k
+    return x, k
 
 def _DimensionsCompatible_EqualityInequality(Q, c, A, b, C, d):
     """Check to make sure the dimensions of a quadratic programming problem are compatible"""
@@ -359,33 +362,32 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
     """
 
     def Jacobian():
-        """Jacobian of the function F(x,lamb,s) below"""
-        return np.block([[C,  np.zeros((p,p+n+2*m))],
-                         [-1*Q, C.T, np.eye(n), A.T, np.zeros((n,m))],
-                         [A, np.zeros((m,p+n+m)),-1*np.eye(m)],
-                         [np.diagflat(s), np.zeros((n,p)), np.diagflat(x), np.zeros((n,2*m))],
-                         [np.zeros((m,2*n+p)), np.diagflat(theta), np.diagflat(t)]])
+        """Jacobian of the function F(x, lamb, s) below"""
+        return np.block([[C,  np.zeros((p, p+n+2*m))],
+                         [-1*Q, C.T, np.eye(n), A.T, np.zeros((n, m))],
+                         [A, np.zeros((m, p+n+m)), -1*np.eye(m)],
+                         [np.diagflat(s), np.zeros((n, p)), np.diagflat(x), np.zeros((n, 2*m))],
+                         [np.zeros((m, 2*n+p)), np.diagflat(theta), np.diagflat(t)]])
 
     def F(Fx, Flamb, Fs, Ft, Ftheta):
         """Used in the Barrier method to calculate the overall system value"""
-        m,n = A.shape
-        p,_ = C.shape
-        F_row1 = np.matmul(C,Fx) - d
-        F_row2 = np.matmul(-Q,Fx) + np.matmul(C.T,Flamb) + Fs + np.matmul(A.T,Ft) - c
-        F_row3 = np.matmul(A,Fx) - b - theta
-        F_row4 = np.array([[Fx[i,0]*Fs[i,0]] for i in range(n)]) - mu*np.ones((n,1))
-        F_row5 = np.array([[Ft[i,0]*Ftheta[i,0]] for i in range(m)]) - mu*np.ones((m,1))
+        m, n = A.shape
+        F_row1 = np.matmul(C, Fx) - d
+        F_row2 = np.matmul(-Q, Fx) + np.matmul(C.T, Flamb) + Fs + np.matmul(A.T, Ft) - c
+        F_row3 = np.matmul(A, Fx) - b - theta
+        F_row4 = np.array([[Fx[i, 0]*Fs[i, 0]] for i in range(n)]) - mu*np.ones((n, 1))
+        F_row5 = np.array([[Ft[i, 0]*Ftheta[i, 0]] for i in range(m)]) - mu*np.ones((m, 1))
         return np.vstack((F_row1, F_row2, F_row3, F_row4, F_row5))
 
     # For convenience
-    m,n = A.shape
-    p,_ = C.shape
+    m, n = A.shape
+    p, _ = C.shape
     mu = mu0
 
     k = 1
 
     # Cache frequently needed values
-    r = -F(x,lamb,s,t,theta)
+    r = -1*F(x, lamb, s, t, theta)
     normr = LA.norm(r)**2
 
     while np.sqrt(normr) > tol and k < kmax and mu > mumin:
@@ -393,19 +395,22 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
         J = Jacobian()
 
         # Solve Jd = r using least squares method
-        dir = LA.lstsq(J,r,rcond=None)[0]
+        direction = LA.lstsq(J, r, rcond=None)[0]
 
         # Split the d apart into the different component pieces
-        dx = dir[:n]
-        dlamb = dir[n:n+p]
-        ds = dir[n+p:2*n+p]
-        dt = dir[2*n+p:2*n+p+m]
-        dtheta = dir[2*n+p+m:]
+        dx = direction[:n]
+        dlamb = direction[n:n+p]
+        ds = direction[n+p:2*n+p]
+        dt = direction[2*n+p:2*n+p+m]
+        dtheta = direction[2*n+p+m:]
 
-        z = 0.9*LA.norm(np.matmul(r.T,J))*LA.norm(dir)
+        z = 0.9*LA.norm(np.matmul(r.T, J))*LA.norm(direction)
 
         # Select the largest alpha_0 with 0 <= alpha_0 <=1 so that x + alpha_0*dx > 0 and s + alpha*ds > 0
-        if all(v >= 0 for v in dx) and all(v >= 0 for v in ds) and all(v >= 0 for v in dt) and all(v >= 0 for v in dtheta):
+        if all(v >= 0 for v in dx) and \
+           all(v >= 0 for v in ds) and \
+           all(v >= 0 for v in dt) and \
+           all(v >= 0 for v in dtheta):
             # Step is away from the boundary so we can take a full step
             alpha_bar = 1
         else:
@@ -415,35 +420,39 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
             for i in range(dx.shape[0]):
                 if dx[i] < 0:
                     val = -x[i]/dx[i]
-                    if alpha_bar == None or val < alpha_bar:
+                    if alpha_bar is None or val < alpha_bar:
                         alpha_bar = val
             # search for min(-sk[i]/dsk[i]) among i s.t. ds[i] < 0
             for i in range(ds.shape[0]):
                 if ds[i] < 0:
                     val = -s[i]/ds[i]
-                    if alpha_bar == None or val < alpha_bar:
+                    if alpha_bar is None or val < alpha_bar:
                         alpha_bar = val
             # # search for min(-tk[i]/dtk[i]) among i s.t. dt[i] < 0
             for i in range(dt.shape[0]):
                 if dt[i] < 0:
                     val = -t[i]/dt[i]
-                    if alpha_bar == None or val < alpha_bar:
+                    if alpha_bar is None or val < alpha_bar:
                         alpha_bar = val
             # # search for min(-thetak[i]/dthetak[i]) among i s.t. dtheta[i] < 0
             for i in range(dtheta.shape[0]):
                 if dtheta[i] < 0:
                     val = -theta[i]/dtheta[i]
-                    if alpha_bar == None or val < alpha_bar:
+                    if alpha_bar is None or val < alpha_bar:
                         alpha_bar = val
 
-        # alpha_bar is the distance to the boundary (or 1 if we are moving away from the boundary, 
+        # alpha_bar is the distance to the boundary (or 1 if we are moving away from the boundary,
         # want a little bit on the inside of the boundary
-        alpha_0 = 0.99995*min(alpha_bar,1)
+        alpha_0 = 0.99995*min(alpha_bar, 1)
         # print(alpha_0)
 
         # Now we need to find the "best" Newton step size (minimizes F along the direction of d)
         # Set L and R
-        L = LA.norm(F(x + alpha_0*dx, lamb + alpha_0*dlamb, s + alpha_0*ds, t + alpha_0*dt, theta + alpha_0*dtheta))**2
+        L = LA.norm(F(x + alpha_0*dx,
+                      lamb + alpha_0*dlamb,
+                      s + alpha_0*ds,
+                      t + alpha_0*dt,
+                      theta + alpha_0*dtheta))**2
         R = normr - alpha_0*z
 
         # Find min L
@@ -458,7 +467,11 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
             stepsize = 2**(-j)*alpha_0
 
             # Calculate L, R
-            L = LA.norm(F(x + stepsize*dx, lamb + stepsize*dlamb, s + stepsize*ds, t + stepsize*dt, theta + stepsize*dtheta))**2
+            L = LA.norm(F(x + stepsize*dx,
+                          lamb + stepsize*dlamb,
+                          s + stepsize*ds,
+                          t + stepsize*dt,
+                          theta + stepsize*dtheta))**2
             R = normr - stepsize*z
             if L < Lmin:
                 Lmin = L
@@ -480,15 +493,16 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
         mu = rho*mu
 
         # Update cache
-        r = -F(x, lamb, s, t, theta)
+        r = -1*F(x, lamb, s, t, theta)
         normr = LA.norm(r)**2
 
     if k > kmax:
         raise NonConvergenceError("kmax exceeded, consider raising it")
     if mu < mumin:
-        raise NonConvergenceError(f"mu became smaller than mumin before reaching convergence. Consider lowering mumin.\n x = {x}")
+        raise NonConvergenceError(f"mu became smaller than mumin before reaching convergence.\
+                                    Consider lowering mumin.\n x = {x}")
 
-    return x,lamb,s,t,theta,k
+    return x, lamb, s, t, theta, k
 
 def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9):
     """
@@ -586,27 +600,27 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
     """
 
     def Jacobian():
-        """Jacobian of the function F(x,lamb,s) below"""
-        return np.block([[A,              np.zeros((m,m+n))],
+        """Jacobian of the function F(x, lamb, s) below"""
+        return np.block([[A,              np.zeros((m, m+n))],
                          [-1*Q,           A.T,             np.eye(n)],
-                         [np.diagflat(s), np.zeros((n,m)), np.diagflat(x)]])
+                         [np.diagflat(s), np.zeros((n, m)), np.diagflat(x)]])
 
     def F(Fx, Fs, Flamb):
         """Used in the Barrier method to calculate the overall system value"""
-        m,n = A.shape
-        F_row1 = np.matmul(A,Fx) - b
-        F_row2 = np.matmul(-Q,Fx) + np.matmul(A.T,Flamb) + Fs - c
-        # F_row3 = np.array([[Fx[i,0]*Fs[i,0]] for i in range(n)]) - sigma*mu*np.ones((n,1))
-        F_row3 = np.array([[Fx[i,0]*Fs[i,0]] for i in range(n)])
+        _, n = A.shape
+        F_row1 = np.matmul(A, Fx) - b
+        F_row2 = np.matmul(-Q, Fx) + np.matmul(A.T, Flamb) + Fs - c
+        # F_row3 = np.array([[Fx[i, 0]*Fs[i, 0]] for i in range(n)]) - sigma*mu*np.ones((n, 1))
+        F_row3 = np.array([[Fx[i, 0]*Fs[i, 0]] for i in range(n)])
         return np.vstack((F_row1, F_row2, F_row3))
 
     # For convenience
-    m,n = A.shape
+    m, n = A.shape
 
     k = 1
 
     # Cache frequently needed values
-    r = -F(x,s,lamb)
+    r = -1*F(x, s, lamb)
     mu = np.matmul(s.T, x)/n
     rx = r[:n]
     rlamb = r[n:n+m]
@@ -616,11 +630,12 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
         J = Jacobian()
 
         # Solve Jd = r using least squares method
-        d_pred = LA.lstsq(J,r,rcond=None)[0]
+        d_pred = LA.lstsq(J, r, rcond=None)[0]
 
         # Split the d_pred apart into the different component pieces
         dx_pred = d_pred[:n]
-        dlamb_pred = d_pred[n:n+m]
+        # Don't need this one
+        # dlamb_pred = d_pred[n:n+m]
         ds_pred = d_pred[n+m:]
 
         # Find the alpha_preds
@@ -633,11 +648,11 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
 
         # Solve for dcorr
         # Need RHS first
-        rhs_row1 = np.zeros((m+n,1))
-        rhs_row2 = sigma*mu*np.ones((n,1)) - np.array([[dx_pred[i,0]*ds_pred[i,0]] for i in range(n)])
-        rhs = np.vstack((rhs_row1,rhs_row2))
+        rhs_row1 = np.zeros((m+n, 1))
+        rhs_row2 = sigma*mu*np.ones((n, 1)) - np.array([[dx_pred[i, 0]*ds_pred[i, 0]] for i in range(n)])
+        rhs = np.vstack((rhs_row1, rhs_row2))
         # Now solve for d_corr
-        d_corr = LA.lstsq(J,rhs,rcond=None)[0]
+        d_corr = LA.lstsq(J, rhs, rcond=None)[0]
 
         # Create the full d vector
         d = d_pred + d_corr
@@ -662,7 +677,7 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
         mu = np.matmul(x.T, s)/n
 
         # Update cache
-        r = -F(x, s, lamb)
+        r = -1*F(x, s, lamb)
         rx = r[:n]
         rlamb = r[n:n+m]
 
@@ -671,18 +686,18 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
     if mu < mumin and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
         raise NonConvergenceError("mu became smaller than mumin before reaching convergence. Consider lowering mumin")
 
-    return x,lamb,s,k
+    return x, lamb, s, k
 
 def _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q):
     check1 = LA.norm(rx)/(1 + LA.norm(b))
     check2 = LA.norm(rlamb)/(1 + LA.norm(c))
-    check3 = mu/(1 + 0.5*np.matmul(x.T, np.matmul(Q,x)) + np.matmul(c.T, x))
-    return max(check1, check2, check3[0,0])
+    check3 = mu/(1 + 0.5*np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+    return max(check1, check2, check3[0, 0])
 
-def _PredCorr_AlphaBinarySearch(x, dx,tol=1e-2):
+def _PredCorr_AlphaBinarySearch(x, dx, tol=1e-2):
     """Perform a line search to find maximum alpha s.t. x + alpha*dx >= 0"""
     # If we can take a full step without crossing the boundary, then we just return alpha = 1
-    if all(x[i,0] + dx[i,0] >= 0 for i in range(x.shape[0])):
+    if all(x[i, 0] + dx[i, 0] >= 0 for i in range(x.shape[0])):
         return 1.0
 
     # If we can't take a full step, then we use a binary search
@@ -690,7 +705,7 @@ def _PredCorr_AlphaBinarySearch(x, dx,tol=1e-2):
     R = 1.0
     while R-L > tol:
         M = 0.5*(R + L)
-        if all(x[i,0] + M*dx[i,0] >= 0 for i in range(x.shape[0])):
+        if all(x[i, 0] + M*dx[i, 0] >= 0 for i in range(x.shape[0])):
             L = M
         else:
             R = M
@@ -706,17 +721,17 @@ if __name__ == "__main__":
     #          3x_1 +  2x_2 <= 2124
     #          2x_1 +  5x_2 <= 2700
 
-    # A = np.array([[-7, -10, -1, 0, 0, 0],[-3, -5, 0, -1, 0, 0],[-3, -2, 0, 0, -1, 0],[-2, -5, 0, 0, 0, -1]])
+    # A = np.array([[-7, -10, -1, 0, 0, 0], [-3, -5, 0, -1, 0, 0], [-3, -2, 0, 0, -1, 0], [-2, -5, 0, 0, 0, -1]])
     # b = np.array([[-6300, -3600, -2124, -2700]]).T
     # c = np.array([[-10, -9, 0, 0, 0, 0]]).T
-    # Q = np.zeros((6,6))
+    # Q = np.zeros((6, 6))
     # tol = 1e-5
     # kmax = 10000
     # rho = .9
     # mu0 = 1e4
     # mumin = 1e-8
 
-    # x,k = InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    # x, k = InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
     # print("Found optimal : \n" + str(x[0:2]))
     # print("Num Iterations: " + str(k))
 
@@ -730,8 +745,8 @@ if __name__ == "__main__":
     # A = np.array([[-1, -3, -2], [0, 2, -1]])
     # b = np.array([[-3, -1]]).T
     # c = np.array([[2, 3, 6]]).T
-    # Q = np.zeros((3,3))
-    # C = np.array([[1, -1, 1],[2, 2, -3]])
+    # Q = np.zeros((3, 3))
+    # C = np.array([[1, -1, 1], [2, 2, -3]])
     # d = np.array([[2, 0]]).T
     # tol = 1e-8
     # kmax = 10000
@@ -739,13 +754,13 @@ if __name__ == "__main__":
     # mu0 = 1e4
     # mumin = 1e-9
 
-    # x,k = InteriorPointBarrier_EqualityInequality(Q,c,A,b,C,d,tol,kmax,rho,mu0,mumin)
+    # x, k = InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax, rho, mu0, mumin)
     # print("Found Optimal : \n" + str(x))
     # print("Num Iterations: " + str(k))
-    # true_answer = np.array([[1.208,0.042,0.833]]).T
+    # true_answer = np.array([[1.208, 0.042, 0.833]]).T
     # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
-    # print("Cost of found solution:" + str(np.matmul(c.T,x)))
-    # print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)))
+    # print("Cost of found solution:" + str(np.matmul(c.T, x)))
+    # print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)))
 
     # Solve the following problem using the predictor-corrector method:
     # min -3x_1 + x_2 + 3x_3 - x_4
@@ -757,17 +772,17 @@ if __name__ == "__main__":
     #               [2, -2,  3,  3],
     #               [1, -1,  2, -1]])
     # b = np.array([[0, 9, 6]]).T
-    # Q = np.zeros((4,4))
+    # Q = np.zeros((4, 4))
     # c = np.array([[-3, 1, 3, -1]]).T
-    # tol = (1e0,1e-9)
+    # tol = (1e0, 1e-9)
 
-    # x,k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-12)
+    # x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-12)
     # print("Found Optimal : \n" + str(x))
     # print("Num Iterations: " + str(k))
     # true_answer = np.array([[1, 1, 3, 0]]).T
     # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
-    # print("Cost of found solution:" + str(np.matmul(c.T,x)))
-    # print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)))
+    # print("Cost of found solution:" + str(np.matmul(c.T, x)))
+    # print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)))
 
     # Solve the following problem using the predictor-corrector method:
     # min x_1 + 6x_2 - 7x_3 + x_4 + 5x_5
@@ -777,15 +792,15 @@ if __name__ == "__main__":
     A = np.array([[5, -4, 13, -2, 1],
                   [1, -1,  5, -1, 1]])
     b = np.array([[20, 8]]).T
-    Q = np.zeros((5,5))
+    Q = np.zeros((5, 5))
     c = np.array([[1, 6, -7, 1, 5]]).T
-    tol = (1e-3,1e-14)
-    kmax= (100,1000)
+    tol = (1e-15, 1e-14)
+    kmax = (1000, 1000)
 
-    x,k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14, kmax=kmax)
+    x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14, kmax=kmax)
     print("Found Optimal : \n" + str(x))
     print("Num Iterations: " + str(k))
     true_answer = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
     print("Norm of Error is: " + str(LA.norm(x - true_answer)))
-    print("Cost of found solution: " + str(np.matmul(c.T,x)[0,0]))
-    print("Cost of 'true' solution: " + str(np.matmul(c.T,true_answer)[0,0]))
+    print("Cost of found solution: " + str(np.matmul(c.T, x)[0, 0]))
+    print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)[0, 0]))
