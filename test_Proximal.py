@@ -34,7 +34,7 @@ def test_Lasso():
         lamb = 0.2
 
         # Run LASSO
-        x_Lasso, k_Lasso = Lasso(A, y, x0, tol, lamb, step_size, cost_or_pos="pos", kmax=100000)
+        x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100000)
         print("x_Lasso = ", x_Lasso)
 
         # Now we need code to check our results, we'll use GradDescent_BB
