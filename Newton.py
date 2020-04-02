@@ -137,7 +137,7 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao=1e-5):
     x0 = np.array([10], dtype="float")
     tol = 1e-4
     kmax = 1000
-    print(GradDescent_BB((lambda x: np.arctan(x-np.pi/4)), x0, tol, kmax))
+    print(GradDescent_BB((lambda x: np.arctan(x-np.pi/4)), "CD", x0, tol, kmax))
     """
 
     # Use CentralDifferences to approximate the gradient
@@ -179,7 +179,6 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao=1e-5):
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xnew, k
-
 
 def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao=1e-5):
     """
