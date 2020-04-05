@@ -4,7 +4,7 @@
 import numpy as np
 import numpy.linalg as LA
 from Proximal import Lasso
-from Newton import GradDescent_ILS
+from Newton import GradDescent_BB
 
 
 def test_Lasso():
@@ -42,15 +42,15 @@ def test_Lasso():
         z = np.vstack((np.maximum(0, x0), -np.minimum(0, x0)))
         Q = np.matmul(Atilde.T, Atilde)
         c = -np.matmul(Atilde.T, y) + lamb*np.sum(z)
-        tol = 1e-4
-        CD_tao = 1e-8
+        tol = 1e-3
+        CD_tao = 1e-4
 
         q = (lambda z: 0.5*np.matmul(z.T, np.matmul(Q, z)) + np.matmul(c.T, z))
-        x_ILS, _ = GradDescent_ILS(q, "CD", z, tol, 1000000, CD_tao=CD_tao)
-        x_ILS = x_ILS[:n] - x_ILS[n:]
+        x_BB, _ = GradDescent_BB(q, "CD", z, tol, 1000000, CD_tao=CD_tao)
+        x_BB = x_BB[:n] - x_BB[n:]
 
         Lasso_cost = 0.5*LA.norm(np.matmul(A,x_Lasso) - y)**2 + lamb*LA.norm(x_Lasso,1)
-        ILS_cost = 0.5*LA.norm(np.matmul(A,x_ILS) - y)**2 + lamb*LA.norm(x_ILS,1)
+        BB_cost = 0.5*LA.norm(np.matmul(A,x_BB) - y)**2 + lamb*LA.norm(x_BB,1)
 
         # Relative Error to ILS optimum
-        assert Lasso_cost < ILS_cost or abs(Lasso_cost - ILS_cost)/ILS_cost < 0.03
+        assert Lasso_cost < BB_cost or abs(Lasso_cost - BB_cost)/BB_cost < 0.03

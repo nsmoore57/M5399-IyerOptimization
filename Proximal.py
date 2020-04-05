@@ -147,7 +147,7 @@ if __name__ == "__main__":
     # plt.plot(s,y)
     # plt.show()
 
-    from Newton import GradDescent_ILS
+    from Newton import GradDescent_BB
     import time
     # Test seeds - need seeds where ILS will converge
     seeds = range(2020, 2025)
@@ -183,26 +183,26 @@ if __name__ == "__main__":
         z = np.vstack((np.maximum(0, x0), -np.minimum(0, x0)))
         Q = np.matmul(Atilde.T, Atilde)
         c = -np.matmul(Atilde.T, y) + lamb*np.sum(z)
-        tol = 1e-4
-        CD_tao = 1e-8
+        tol = 1e-3
+        CD_tao = 1e-4
 
         # Cost function
         q = (lambda z: 0.5*np.matmul(z.T, np.matmul(Q, z)) + np.matmul(c.T, z))
 
-        # Run ILS and time it
+        # Run BB and time it
         start = time.time()
-        x_ILS, _ = GradDescent_ILS(q, "CD", z, tol, 1000000, CD_tao=CD_tao)
-        x_ILS = x_ILS[:n] - x_ILS[n:]
+        x_BB, _ = GradDescent_BB(q, "CD", z, tol, 100000, CD_tao=CD_tao)
+        x_BB = x_BB[:n] - x_BB[n:]
         end = time.time()
-        ILS_time = end - start
+        BB_time = end - start
 
         Lasso_cost = 0.5*LA.norm(np.matmul(A, x_Lasso) - y)**2 + lamb*LA.norm(x_Lasso, 1)
-        ILS_cost = 0.5*LA.norm(np.matmul(A, x_ILS) - y)**2 + lamb*LA.norm(x_ILS, 1)
+        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*LA.norm(x_BB, 1)
 
         print("============")
-        print(f"Seed                 : {i}", i)
+        print(f"Seed                 : {i}")
         print(f"m x n                : {m} x {n}")
         print(f"Cost Lasso           : {Lasso_cost}")
-        print(f"Cost ILS             : {ILS_cost}")
+        print(f"Cost BB              : {BB_cost}")
         print(f"Time Lasso (sec)     : {Lasso_time}")
-        print(f"Time ILS   (sec)     : {ILS_time}")
+        print(f"Time BB    (sec)     : {BB_time}")
