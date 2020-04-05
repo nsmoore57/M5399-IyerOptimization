@@ -152,29 +152,26 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao=1e-5):
     xold = np.zeros(x0.shape)
     xnew = x0
 
-    # Notice if x0 = 0, then gamma will be zero, then (after 1 iteration) dnew - dold = 0
-    #   and we get a division by zero
-    # To solve this, if x0 = 0, perturb xold by a small amount
-    if all(xnew == xold):
-        xold += 1e-7*np.ones(xold.shape)
-
-    dold = np.zeros(x0.shape)
-    dnew = -gradq(xnew)
+    dnew = gradq(xnew)
+    dold = np.zeros(dnew.shape)
     while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:
         # Step size
-        gamma = np.matmul((xnew - xold).T, dnew - dold)/LA.norm(dnew-dold)**2
+        if k == 1:
+            gamma = np.matmul(xnew.T,dnew)/LA.norm(dnew)**2 + 1e-7
+        else:
+            gamma = np.matmul((xnew - xold).T, dnew - dold)/LA.norm(dnew-dold)**2
 
         # Reset all old values to avoid evaluating f more times than necessary
         xold = xnew
         dold = dnew
         xnew = xold - gamma*dnew
-        dnew = -gradq(xnew)
+        dnew = gradq(xnew)
         k += 1
 
     # If kmax gets exceeded, we can't trust the answer so raise an error
     if k >= kmax:
         # For debugging purposes
-        # return xk, k
+        # return xnew, k
         raise NonConvergenceError("Kmax exceeded, consider raise kmax")
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
