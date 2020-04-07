@@ -22,8 +22,7 @@ class UnrecognizedArgumentError(ProxError):
 
 def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
     """
-    Implement the LASSO method
-    Run Lasso Method to solve:
+    Implement the LASSO method solve:
     min (1/2)norm2(Ax-b)**2 + lamb*norm1(x)
 
     Input Arguments:
@@ -71,10 +70,14 @@ def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
 
     # Run LASSO
     x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100000)
-
-    TODOs:
-    TODO Consider moving general proximal stuff into separate method
     """
+    def _Prox_1Norm(v, theta):
+        """Calculate the Prox operator for the 1 norm - used for Lasso"""
+        ret = np.zeros(v.shape)
+        for i in range(ret.shape[0]):
+            if abs(v[i, 0]) >= theta:
+                ret[i, 0] = v[i, 0] - theta*np.sign(v[i, 0])
+        return ret
 
     # Make sure the cost_or_pos is recognized
     if cost_or_pos not in ('cost', 'pos'):
@@ -84,6 +87,104 @@ def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
     if not compat:
         raise DimensionMismatchError(error)
 
+    xnew, k = ProximalMethod(A, y, x0, _Prox_1Norm, lamb, tol, step_size, cost_or_pos, kmax)
+    return xnew, k
+
+def RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
+    """
+    Implement the Ridge Regression method to solve
+    min (1/2)norm2(Ax-b)**2 + (lamb/2)*norm2(x)**2
+
+    Input Arguments:
+    A           -- Matrix of coefficients - typically data
+    y           -- Data to match Ax to
+    x0          -- Initial guess for weights
+    lamb        -- Strength of the norm1(x) term
+    tol         -- Error tolerance for stopping condition - see cost_or_pos
+    step_size   -- Step size to take
+                   - typically 1/(largest eigenvalue of A) if available
+    cost_or_pos -- Whether the stopping condition is based on cost or position
+                   - "cost" will terminate if cost(x_{k+1}) - cost(x_{k}) < tol
+                   - "pos" will terminate if norm2(x_{k+1} - x_k) < tol
+    kmax        -- Maximum steps allowed, used for stopping condition
+
+    Returns:
+    If the optimal is found within tolerance
+    x        -- Coordinates of the optimal value
+    k        -- The number of total iterations required
+                - Includes the iterations needed to find the first feasible point
+
+    Errors:
+    Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
+    Raises a NonConvergenceError if the optimum cannot be found within tolerance
+    Raises a UnrecognizedArgumentError if cost_or_pos takes a value other than "cost" or "pos"
+
+    Example:
+    m = np.random.randint(8, 15)
+    n = m+1
+    while n >= m:
+        n = np.random.randint(5, 15)
+
+    # Select random A, y, x0
+    A = np.random.normal(size=(m, n))
+    y = np.random.normal(size=(m, 1))
+    x0 = np.random.normal(size=(n, 1))
+
+    # Problem Params
+    tol = 1e-8
+    lamb = 0.2
+
+    # Calculate max eigenvalue of A and use it to set the step size
+    L = max(LA.eigvalsh(np.matmul(A.T, A)))
+    step_size = 1.0/L
+
+    # Run Ridge Regression
+    x_RR, k_RR = RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100000)
+    """
+    def _Prox_2Norm(v, theta):
+        """Calculate the Prox operator for the 2 norm - used for Ridge Regression"""
+        return v.copy()/(theta + 1)
+
+    # Make sure the cost_or_pos is recognized
+    if cost_or_pos not in ('cost', 'pos'):
+        raise UnrecognizedArgumentError("cost_or_pos must either be cost or pos")
+    # Check if the dimensions of A and b are compatible
+    compat, error = _DimensionsCompatible_Lasso(A, y, x0)
+    if not compat:
+        raise DimensionMismatchError(error)
+
+    return ProximalMethod(A, y, x0, _Prox_2Norm, lamb, tol, step_size, cost_or_pos, kmax)
+
+def ProximalMethod(A, y, x0, prox, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
+    """
+    Implement the general Proximal method to solve
+    min (1/2)norm2(Ax-b)**2 + lamb*g(x)**2
+
+    Input Arguments:
+    A           -- Matrix of coefficients - typically data
+    y           -- Data to match Ax to
+    x0          -- Initial guess for weights
+    prox        -- Prox operator for g, given weight theta
+    lamb        -- Strength of the norm1(x) term
+    tol         -- Error tolerance for stopping condition - see cost_or_pos
+    step_size   -- Step size to take
+                   - typically 1/(largest eigenvalue of A) if available
+    cost_or_pos -- Whether the stopping condition is based on cost or position
+                   - "cost" will terminate if cost(x_{k+1}) - cost(x_{k}) < tol
+                   - "pos" will terminate if norm2(x_{k+1} - x_k) < tol
+    kmax        -- Maximum steps allowed, used for stopping condition
+
+    Returns:
+    If the optimal is found within tolerance
+    x        -- Coordinates of the optimal value
+    k        -- The number of total iterations required
+                - Includes the iterations needed to find the first feasible point
+
+    Errors:
+    Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
+    Raises a NonConvergenceError if the optimum cannot be found within tolerance
+    Raises a UnrecognizedArgumentError if cost_or_pos takes a value other than "cost" or "pos"
+    """
     # Put these far enough apart to make sure the tolerance is exceeded
     xnew = x0 + 2*tol
     xold = x0
@@ -105,7 +206,7 @@ def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
     while diff > tol and k < kmax:
         xold = xnew
         yk = xold - step_size*(np.matmul(ATA, xold) - np.matmul(A.T, y))
-        xnew = _Prox_1Norm(yk, lamb*step_size)
+        xnew = prox(yk, lamb*step_size)
 
         # Update diff based on preference
         if cost_or_pos == "cost":
@@ -122,31 +223,13 @@ def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
 
     return xnew, k
 
-def _Prox_1Norm(v, theta):
-    """Calculate the Prox operator for the 1 norm - used for Lasso"""
-    ret = np.zeros(v.shape)
-    for i in range(ret.shape[0]):
-        if abs(v[i, 0]) >= theta:
-            ret[i, 0] = v[i, 0] - theta*np.sign(v[i, 0])
-    return ret
-
 def _DimensionsCompatible_Lasso(A, y, x0):
     """Check to make sure the dimensions of a quadratic programming problem are compatible"""
     if A.shape[0] != y.shape[0]: return False, f"Rows A ({A.shape[0]}) != Rows y ({y.shape[0]})"
     if A.shape[1] != x0.shape[0]: return False, f"Cols A ({A.shape[1]}) != Rows x0 ({x0.shape[0]})"
     return True, "No error"
 
-if __name__ == "__main__":
-    # Test _Prox1Norm
-    # import matplotlib
-    # import matplotlib.pyplot as plt
-    # s = np.linspace(-1,1,100).reshape((-1,1))
-    # theta = 0.1
-    # y = _Prox_1Norm_VerTwo(s, theta)
-
-    # plt.plot(s,y)
-    # plt.show()
-
+def _test_Lasso():
     from Newton import GradDescent_BB
     import time
     # Test seeds - need seeds where ILS will converge
@@ -174,7 +257,7 @@ if __name__ == "__main__":
         start = time.time()
         L = max(LA.eigvalsh(np.matmul(A.T, A)))
         step_size = 1.0/L
-        x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="pos", kmax=100000)
+        x_Lasso, _ = Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="pos", kmax=100000)
         end = time.time()
         Lasso_time = end - start
 
@@ -206,3 +289,64 @@ if __name__ == "__main__":
         print(f"Cost BB              : {BB_cost}")
         print(f"Time Lasso (sec)     : {Lasso_time}")
         print(f"Time BB    (sec)     : {BB_time}")
+
+def _test_RidgeRegression():
+    from Newton import GradDescent_BB
+    import time
+    # Test seeds - need seeds where ILS will converge
+    seeds = range(2020, 2025)
+
+    for i in seeds:
+        np.random.seed(i)
+
+        # Select random matrix size
+        m = np.random.randint(8, 15)
+        n = m+1
+        while n >= m:
+            n = np.random.randint(5, 15)
+
+        # Select random A, y, x0
+        A = np.random.normal(size=(m, n))
+        y = np.random.normal(size=(m, 1))
+        x0 = np.random.normal(size=(n, 1))
+
+        # Problem Params
+        tol = 1e-8
+        lamb = 0.2
+
+        # Run RidgeRegression and time it - including Eigvalue calculation since it could be expensive
+        start = time.time()
+        L = max(LA.eigvalsh(np.matmul(A.T, A)))
+        step_size = 1.0/L
+        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="pos", kmax=100000)
+        end = time.time()
+        RR_time = end - start
+
+        # Set up cost for BB
+        Q = np.matmul(A.T, A) + lamb*np.eye(A.shape[1])
+        c = -np.matmul(A.T, y)
+        tol = 1e-3
+        CD_tao = 1e-4
+        q = (lambda x: 0.5*np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+        # Run BB and time it
+        start = time.time()
+        x_BB, _ = GradDescent_BB(q, "CD", x0, tol, 100000, CD_tao=CD_tao)
+        end = time.time()
+        BB_time = end - start
+
+        RR_cost = 0.5*LA.norm(np.matmul(A, x_RR) - y)**2 + lamb*LA.norm(x_RR, 1)
+        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*LA.norm(x_BB, 1)
+
+        print("============")
+        print(f"Seed                 : {i}")
+        print(f"m x n                : {m} x {n}")
+        print(f"Cost RR              : {RR_cost}")
+        print(f"Cost BB              : {BB_cost}")
+        print(f"Time RR (sec)        : {RR_time}")
+        print(f"Time BB (sec)        : {BB_time}")
+
+if __name__ == "__main__":
+    # _test_Lasso()
+
+    _test_RidgeRegression()
