@@ -232,17 +232,13 @@ def _DimensionsCompatible_Lasso(A, y, x0):
 def _test_Lasso():
     from Newton import GradDescent_BB
     import time
-    # Test seeds - need seeds where ILS will converge
-    seeds = range(2020, 2025)
 
-    for i in seeds:
-        np.random.seed(i)
-
+    for i in range(10):
         # Select random matrix size
-        m = np.random.randint(8, 15)
+        m = np.random.randint(8, 50)
         n = m+1
         while n >= m:
-            n = np.random.randint(5, 15)
+            n = np.random.randint(5, 50)
 
         # Select random A, y, x0
         A = np.random.normal(size=(m, n))
@@ -283,7 +279,7 @@ def _test_Lasso():
         BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*LA.norm(x_BB, 1)
 
         print("============")
-        print(f"Seed                 : {i}")
+        print(f"Test                 : {i}")
         print(f"m x n                : {m} x {n}")
         print(f"Cost Lasso           : {Lasso_cost}")
         print(f"Cost BB              : {BB_cost}")
@@ -293,17 +289,14 @@ def _test_Lasso():
 def _test_RidgeRegression():
     from Newton import GradDescent_BB
     import time
-    # Test seeds - need seeds where ILS will converge
-    seeds = range(2020, 2025)
 
-    for i in seeds:
-        np.random.seed(i)
-
+    for i in range(10):
         # Select random matrix size
-        m = np.random.randint(8, 15)
+        # m = np.random.randint(6, 15)
+        m = np.random.randint(6, 50)
         n = m+1
         while n >= m:
-            n = np.random.randint(5, 15)
+            n = np.random.randint(5, 50)
 
         # Select random A, y, x0
         A = np.random.normal(size=(m, n))
@@ -339,7 +332,7 @@ def _test_RidgeRegression():
         BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*LA.norm(x_BB, 1)
 
         print("============")
-        print(f"Seed                 : {i}")
+        print(f"Test                 : {i}")
         print(f"m x n                : {m} x {n}")
         print(f"Cost RR              : {RR_cost}")
         print(f"Cost BB              : {BB_cost}")
@@ -347,6 +340,6 @@ def _test_RidgeRegression():
         print(f"Time BB (sec)        : {BB_time}")
 
 if __name__ == "__main__":
-    # _test_Lasso()
+    _test_Lasso()
 
     _test_RidgeRegression()

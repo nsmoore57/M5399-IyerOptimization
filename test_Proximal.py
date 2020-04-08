@@ -10,12 +10,7 @@ from Newton import GradDescent_BB
 def test_Lasso():
     """Tests the Prox.Lasso Method - Lasso is quick, but ILS is slow"""
 
-    # Seeds for testing - need to have convergence for the Newton methods
-    seeds = range(2020,2025)
-
-    for i in seeds:
-        np.random.seed(i)
-
+    for i in range(10):
         # Select random matrix size
         m = np.random.randint(8, 15)
         n = m+1
@@ -58,12 +53,7 @@ def test_Lasso():
 def test_RidgeRegression():
     """Tests the Prox.RidgeRegression Method"""
 
-    # Seeds for testing - need to have convergence for the Newton methods
-    seeds = range(2020,2025)
-
-    for i in seeds:
-        np.random.seed(i)
-
+    for i in range(10):
         # Select random matrix size
         m = np.random.randint(8, 15)
         n = m+1
