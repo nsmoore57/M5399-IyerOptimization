@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-"""This script tests the exported functions in InterierPoint.py"""
+"""This script tests the exported functions in Proximal.py"""
 
 import numpy as np
 import numpy.linalg as LA
 from Proximal import Lasso, RidgeRegression
 from Newton import GradDescent_BB
 
-
 def test_Lasso():
-    """Tests the Prox.Lasso Method - Lasso is quick, but ILS is slow"""
+    """Tests the Prox.Lasso Method - Lasso is quick, BB is slower"""
 
     for i in range(10):
         # Select random matrix size
@@ -23,11 +22,12 @@ def test_Lasso():
         x0 = np.random.normal(size=(n, 1))
 
         # Problem Params
-        tol = 1e-8
         lamb = 0.2
+        tol = 1e-8
+        cost_or_pos = "cost" if i < 5 else "pos"
 
         # Run LASSO
-        x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, cost_or_pos="cost", kmax=100000)
+        x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
         print("x_Lasso = ", x_Lasso)
 
         # Now we need code to check our results, we'll use GradDescent_BB
@@ -45,7 +45,7 @@ def test_Lasso():
         Lasso_cost = 0.5*LA.norm(np.matmul(A,x_Lasso) - y)**2 + lamb*LA.norm(x_Lasso,1)
         BB_cost = 0.5*LA.norm(np.matmul(A,x_BB) - y)**2 + lamb*LA.norm(x_BB,1)
 
-        # Relative Error to ILS optimum
+        # Relative Error to BB optimum
         assert Lasso_cost < BB_cost or abs(Lasso_cost - BB_cost)/BB_cost < 0.03
 
 def test_RidgeRegression():
@@ -64,11 +64,12 @@ def test_RidgeRegression():
         x0 = np.random.normal(size=(n, 1))
 
         # Problem Params
-        tol = 1e-8
         lamb = 0.2
+        tol = 1e-8
+        cost_or_pos = "cost" if i < 5 else "pos"
 
         # Run RidgeRegression
-        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, cost_or_pos="cost", kmax=100000)
+        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
         print("x_RR = ", x_RR)
 
         # Now we need code to check our results, we'll use GradDescent_BB
@@ -84,5 +85,5 @@ def test_RidgeRegression():
         RR_cost = 0.5*LA.norm(np.matmul(A,x_RR) - y)**2 + lamb*LA.norm(x_RR,1)
         BB_cost = 0.5*LA.norm(np.matmul(A,x_BB) - y)**2 + lamb*LA.norm(x_BB,1)
 
-        # Relative Error to ILS optimum
+        # Relative Error to BB optimum
         assert RR_cost < BB_cost or abs(RR_cost - BB_cost)/BB_cost < 0.03
