@@ -20,7 +20,7 @@ class UnrecognizedArgumentError(ProxError):
     """For errors involving incorrectly given function arguments"""
     pass
 
-def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
+def Lasso(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kmax=1000):
     """
     Implement the LASSO method solve:
     min (1/2)norm2(Ax-b)**2 + lamb*norm1(x)
@@ -71,6 +71,16 @@ def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
     # Run LASSO
     x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100000)
     """
+
+    # This is used a couple of places so calculate it once
+    ATA = np.matmul(A.T, A)
+
+    # If the step_size is not explicitly specified - we calculate it here
+    if step_size == None:
+        L = max(LA.eigvalsh(ATA))
+        step_size = 1.0/L
+
+
     def _Prox_1Norm(v, theta):
         """Calculate the Prox operator for the 1 norm - used for Lasso"""
         ret = np.zeros(v.shape)
@@ -82,15 +92,21 @@ def Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
     # Make sure the cost_or_pos is recognized
     if cost_or_pos not in ('cost', 'pos'):
         raise UnrecognizedArgumentError("cost_or_pos must either be cost or pos")
+
     # Check if the dimensions of A and b are compatible
     compat, error = _DimensionsCompatible_Lasso(A, y, x0)
     if not compat:
         raise DimensionMismatchError(error)
 
-    xnew, k = ProximalMethod(A, y, x0, _Prox_1Norm, lamb, tol, step_size, cost_or_pos, kmax)
-    return xnew, k
+    gradf = (lambda x: np.matmul(ATA, x) - np.matmul(A.T, y))
+    if cost_or_pos == "cost":
+        cost = (lambda x: 0.5*LA.norm(np.matmul(A, x) - y)**2 + lamb*LA.norm(x, 1))
+    else:
+        cost = "pos"
 
-def RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
+    return ProximalMethod(x0, gradf, _Prox_1Norm, lamb, tol, step_size, cost, kmax)
+
+def RidgeRegression(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kmax=1000):
     """
     Implement the Ridge Regression method to solve
     min (1/2)norm2(Ax-b)**2 + (lamb/2)*norm2(x)**2
@@ -141,37 +157,55 @@ def RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100
     # Run Ridge Regression
     x_RR, k_RR = RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100000)
     """
-    def _Prox_2Norm(v, theta):
-        """Calculate the Prox operator for the 2 norm - used for Ridge Regression"""
-        return v.copy()/(theta + 1)
+
+    # This is used a couple of times is calculate it once
+    ATA = np.matmul(A.T, A)
+
+    # If step_size is not explicitly given - calculate it from A
+    if step_size == None:
+        L = max(LA.eigvalsh(ATA))
+        step_size = 1.0/L
 
     # Make sure the cost_or_pos is recognized
     if cost_or_pos not in ('cost', 'pos'):
         raise UnrecognizedArgumentError("cost_or_pos must either be cost or pos")
+
     # Check if the dimensions of A and b are compatible
     compat, error = _DimensionsCompatible_Lasso(A, y, x0)
     if not compat:
         raise DimensionMismatchError(error)
 
-    return ProximalMethod(A, y, x0, _Prox_2Norm, lamb, tol, step_size, cost_or_pos, kmax)
+    # Prox operator for 2 norm
+    proxg = (lambda v, theta: v.copy()/(theta + 1))
 
-def ProximalMethod(A, y, x0, prox, lamb, tol, step_size, cost_or_pos="cost", kmax=1000):
+    gradf = (lambda x: np.matmul(ATA, x) - np.matmul(A.T, y))
+    if cost_or_pos == "cost":
+        cost = (lambda x: 0.5*LA.norm(np.matmul(A, x) - y)**2 + lamb*LA.norm(x))
+    else:
+        cost = "pos"
+
+    return ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax)
+
+def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost="pos", kmax=1000):
     """
     Implement the general Proximal method to solve
-    min (1/2)norm2(Ax-b)**2 + lamb*g(x)**2
+    min f(x) + lamb*g(x)
+    min (1/2)norm2(Ax-b)**2 + lamb*g(x)
 
     Input Arguments:
-    A           -- Matrix of coefficients - typically data
-    y           -- Data to match Ax to
-    x0          -- Initial guess for weights
-    prox        -- Prox operator for g, given weight theta
+    gradf       -- Callable which calculates the gradient of f(x)
+                   - takes 1 argument - the position x
+    proxg       -- Callable which calculates Prox operator for g
+                   - takes 2 arguments, the position x and weight theta
     lamb        -- Strength of the norm1(x) term
     tol         -- Error tolerance for stopping condition - see cost_or_pos
     step_size   -- Step size to take
                    - typically 1/(largest eigenvalue of A) if available
-    cost_or_pos -- Whether the stopping condition is based on cost or position
-                   - "cost" will terminate if cost(x_{k+1}) - cost(x_{k}) < tol
-                   - "pos" will terminate if norm2(x_{k+1} - x_k) < tol
+    cost        -- Stopping condition
+                   - If "pos", function returns if norm2(x_{k+1} - x_k) < tol
+                   - If not "pos", then pass a callable which is able to calculate the cost
+                     - Takes 1 argument - the position
+                     Function returns when cost_x - cost_{x+1} < tol
     kmax        -- Maximum steps allowed, used for stopping condition
 
     Returns:
@@ -185,19 +219,19 @@ def ProximalMethod(A, y, x0, prox, lamb, tol, step_size, cost_or_pos="cost", kma
     Raises a NonConvergenceError if the optimum cannot be found within tolerance
     Raises a UnrecognizedArgumentError if cost_or_pos takes a value other than "cost" or "pos"
     """
+
+    # TODO Test for callables in gradf and proxg
+
     # Put these far enough apart to make sure the tolerance is exceeded
     xnew = x0 + 2*tol
     xold = x0
 
     k = 1
 
-    # Precalc A^T*A since it's needed often
-    ATA = np.matmul(A.T, A)
-
     # If the cost function is our stopping criteria, then we need
     #   variables to track it
-    if cost_or_pos == "cost":
-        cost_curr = 0.5*LA.norm(np.matmul(A, xnew) - y)**2 + lamb*LA.norm(xnew, 1)
+    if cost != "pos":
+        cost_curr = cost(xnew)
         cost_old = cost_curr
 
     # Used for stopping criteria
@@ -205,16 +239,16 @@ def ProximalMethod(A, y, x0, prox, lamb, tol, step_size, cost_or_pos="cost", kma
 
     while diff > tol and k < kmax:
         xold = xnew
-        yk = xold - step_size*(np.matmul(ATA, xold) - np.matmul(A.T, y))
-        xnew = prox(yk, lamb*step_size)
+        yk = xold - step_size*gradf(xold)
+        xnew = proxg(yk, lamb*step_size)
 
         # Update diff based on preference
-        if cost_or_pos == "cost":
-            cost_old = cost_curr
-            cost_curr = 0.5*LA.norm(np.matmul(A, xnew) - y)**2 + lamb*LA.norm(xnew, 1)
-            diff = cost_old - cost_curr
-        else:
+        if cost == "pos":
             diff = LA.norm(xnew - xold)
+        else:
+            cost_old = cost_curr
+            cost_curr = cost(xnew)
+            diff = cost_old - cost_curr
 
         k += 1
 
@@ -229,11 +263,11 @@ def _DimensionsCompatible_Lasso(A, y, x0):
     if A.shape[1] != x0.shape[0]: return False, f"Cols A ({A.shape[1]}) != Rows x0 ({x0.shape[0]})"
     return True, "No error"
 
-def _test_Lasso():
+def _test_Lasso(n):
     from Newton import GradDescent_BB
     import time
 
-    for i in range(10):
+    for i in range(n):
         # Select random matrix size
         m = np.random.randint(8, 50)
         n = m+1
@@ -251,9 +285,7 @@ def _test_Lasso():
 
         # Run LASSO and time it - including Eigvalue calculation since it could be expensive
         start = time.time()
-        L = max(LA.eigvalsh(np.matmul(A.T, A)))
-        step_size = 1.0/L
-        x_Lasso, _ = Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="pos", kmax=100000)
+        x_Lasso, _ = Lasso(A, y, x0, lamb, tol, cost_or_pos="cost", kmax=100000)
         end = time.time()
         Lasso_time = end - start
 
@@ -286,11 +318,11 @@ def _test_Lasso():
         print(f"Time Lasso (sec)     : {Lasso_time}")
         print(f"Time BB    (sec)     : {BB_time}")
 
-def _test_RidgeRegression():
+def _test_RidgeRegression(n):
     from Newton import GradDescent_BB
     import time
 
-    for i in range(10):
+    for i in range(n):
         # Select random matrix size
         # m = np.random.randint(6, 15)
         m = np.random.randint(6, 50)
@@ -309,9 +341,7 @@ def _test_RidgeRegression():
 
         # Run RidgeRegression and time it - including Eigvalue calculation since it could be expensive
         start = time.time()
-        L = max(LA.eigvalsh(np.matmul(A.T, A)))
-        step_size = 1.0/L
-        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="pos", kmax=100000)
+        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, cost_or_pos="cost", kmax=100000)
         end = time.time()
         RR_time = end - start
 
@@ -340,6 +370,6 @@ def _test_RidgeRegression():
         print(f"Time BB (sec)        : {BB_time}")
 
 if __name__ == "__main__":
-    _test_Lasso()
+    _test_Lasso(5)
 
-    _test_RidgeRegression()
+    _test_RidgeRegression(5)

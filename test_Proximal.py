@@ -12,10 +12,10 @@ def test_Lasso():
 
     for i in range(10):
         # Select random matrix size
-        m = np.random.randint(8, 15)
+        m = np.random.randint(8, 50)
         n = m+1
         while n >= m:
-            n = np.random.randint(5, 15)
+            n = np.random.randint(5, 50)
 
         # Select random A, y, x0
         A = np.random.normal(size=(m, n))
@@ -24,12 +24,10 @@ def test_Lasso():
 
         # Problem Params
         tol = 1e-8
-        L = max(LA.eigvalsh(np.matmul(A.T, A)))
-        step_size = 1.0/L
         lamb = 0.2
 
         # Run LASSO
-        x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100000)
+        x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, cost_or_pos="cost", kmax=100000)
         print("x_Lasso = ", x_Lasso)
 
         # Now we need code to check our results, we'll use GradDescent_BB
@@ -55,10 +53,10 @@ def test_RidgeRegression():
 
     for i in range(10):
         # Select random matrix size
-        m = np.random.randint(8, 15)
+        m = np.random.randint(8, 50)
         n = m+1
         while n >= m:
-            n = np.random.randint(5, 15)
+            n = np.random.randint(5, 50)
 
         # Select random A, y, x0
         A = np.random.normal(size=(m, n))
@@ -67,12 +65,10 @@ def test_RidgeRegression():
 
         # Problem Params
         tol = 1e-8
-        L = max(LA.eigvalsh(np.matmul(A.T, A)))
-        step_size = 1.0/L
         lamb = 0.2
 
         # Run RidgeRegression
-        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, step_size, cost_or_pos="cost", kmax=100000)
+        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, cost_or_pos="cost", kmax=100000)
         print("x_RR = ", x_RR)
 
         # Now we need code to check our results, we'll use GradDescent_BB
