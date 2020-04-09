@@ -172,7 +172,7 @@ def RidgeRegression(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kma
 
     gradf = (lambda x: np.matmul(ATA, x) - np.matmul(A.T, y))
     if cost_or_pos == "cost":
-        cost = (lambda x: 0.5*LA.norm(np.matmul(A, x) - y)**2 + lamb*LA.norm(x))
+        cost = (lambda x: 0.5*LA.norm(np.matmul(A, x) - y)**2 + (lamb/2.0)*LA.norm(x)**2)
     else:
         cost = (lambda x: x)
 
