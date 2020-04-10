@@ -194,7 +194,7 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
                    - typically 1/(largest eigenvalue of A) if available
     cost        -- For Stopping condition
                    - Takes 1 argument - the position
-                   Function returns when cost_x - cost_{x+1} < tol
+                   Function returns when norm(cost_x - cost_{x+1}) < tol
     kmax        -- Maximum steps allowed, used for stopping condition
 
     Returns:
@@ -278,7 +278,7 @@ def _test_Lasso(n):
         Atilde = np.hstack((A, -A))
         z = np.vstack((np.maximum(0, x0), -np.minimum(0, x0)))
         Q = np.matmul(Atilde.T, Atilde)
-        c = -np.matmul(Atilde.T, y) + lamb*np.sum(z)
+        c = -np.matmul(Atilde.T, y) + lamb*np.ones(z.shape)
         tol = 1e-3
         CD_tao = 1e-4
 

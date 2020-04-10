@@ -34,7 +34,7 @@ def test_Lasso():
         Atilde = np.hstack((A, -A))
         z = np.vstack((np.maximum(0, x0), -np.minimum(0, x0)))
         Q = np.matmul(Atilde.T, Atilde)
-        c = -np.matmul(Atilde.T, y) + lamb*np.sum(z)
+        c = -np.matmul(Atilde.T, y) + lamb*np.ones(z.shape)
         tol = 1e-3
         CD_tao = 1e-4
 
