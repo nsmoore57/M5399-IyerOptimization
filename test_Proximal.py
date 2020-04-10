@@ -27,7 +27,7 @@ def test_Lasso():
         cost_or_pos = "cost" if i < 5 else "pos"
 
         # Run LASSO
-        x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
+        x_Lasso, _ = Lasso(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
         print("x_Lasso = ", x_Lasso)
 
         # Now we need code to check our results, we'll use GradDescent_BB
@@ -42,8 +42,8 @@ def test_Lasso():
         x_BB, _ = GradDescent_BB(q, "CD", z, tol, 1000000, CD_tao=CD_tao)
         x_BB = x_BB[:n] - x_BB[n:]
 
-        Lasso_cost = 0.5*LA.norm(np.matmul(A,x_Lasso) - y)**2 + lamb*LA.norm(x_Lasso,1)
-        BB_cost = 0.5*LA.norm(np.matmul(A,x_BB) - y)**2 + lamb*LA.norm(x_BB,1)
+        Lasso_cost = 0.5*LA.norm(np.matmul(A, x_Lasso) - y)**2 + lamb*LA.norm(x_Lasso, 1)
+        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*LA.norm(x_BB, 1)
 
         # Relative Error to BB optimum
         assert Lasso_cost < BB_cost or abs(Lasso_cost - BB_cost)/BB_cost < 0.03
@@ -81,8 +81,8 @@ def test_RidgeRegression():
         # Run BB
         x_BB, _ = GradDescent_BB(q, "CD", x0, tol, 100000, CD_tao=CD_tao)
 
-        RR_cost = 0.5*LA.norm(np.matmul(A,x_RR) - y)**2 + lamb*LA.norm(x_RR,1)
-        BB_cost = 0.5*LA.norm(np.matmul(A,x_BB) - y)**2 + lamb*LA.norm(x_BB,1)
+        RR_cost = 0.5*LA.norm(np.matmul(A, x_RR) - y)**2 + lamb*LA.norm(x_RR, 1)
+        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*LA.norm(x_BB, 1)
 
         # Relative Error to BB optimum
         assert RR_cost < BB_cost or abs(RR_cost - BB_cost)/BB_cost < 0.03
@@ -125,7 +125,11 @@ def test_ElasticNet():
         x_BB, _ = GradDescent_BB(q, "CD", z, tol, 100000, CD_tao=CD_tao)
         x_BB = x_BB[:n] - x_BB[n:]
 
-        EN_cost = 0.5*LA.norm(np.matmul(A, x_EN) - y)**2 + lamb*(alpha*LA.norm(x_EN,1) + ((1-alpha)/2)*LA.norm(x_EN)**2)
-        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*(alpha*LA.norm(x_BB,1) + ((1-alpha)/2)*LA.norm(x_BB)**2)
+        EN_cost = 0.5*LA.norm(np.matmul(A, x_EN) - y)**2 \
+                + lamb*(alpha*LA.norm(x_EN, 1) \
+                + ((1-alpha)/2)*LA.norm(x_EN)**2)
+        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 \
+                + lamb*(alpha*LA.norm(x_BB, 1) \
+                + ((1-alpha)/2)*LA.norm(x_BB)**2)
         # Relative Error to BB optimum
         assert EN_cost < BB_cost or abs(EN_cost - BB_cost)/BB_cost < 0.03

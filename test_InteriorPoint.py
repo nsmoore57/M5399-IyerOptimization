@@ -28,7 +28,7 @@ def test_Barrier_EqualityOnly():
     c = np.array([[1, 6, -7, 1, 5]]).T
     Q = np.zeros((5, 5))
 
-    x, k = IP.Barrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    x, _ = IP.Barrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
     true_Opt = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
     assert LA.norm(x - true_Opt) < 10*tol # Should be close to true optimal
     assert LA.norm(np.matmul(A, x) - b) < tol # and should satisfy Ax = b
@@ -103,5 +103,6 @@ def test_Predictor_Corrector():
 
     x, _ = IP.Predictor_Corrector(Q, c, A, b, tol, mumin=1e-14, kmax=kmax)
     true_Opt = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
-    # Not sure of the exact solution - The residual Ax-b is much larger than that for the solution found
+    # Not sure of the exact solution
+    # The residual Ax-b is much larger than that for the solution found
     assert LA.norm(np.matmul(A, x)-b) < tol[1]

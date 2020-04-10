@@ -72,7 +72,7 @@ def Lasso(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kmax=100000):
     ATA = np.matmul(A.T, A)
 
     # If the step_size is not explicitly specified - we calculate it here
-    if step_size == None:
+    if step_size is None:
         L = max(LA.eigvalsh(ATA))
         step_size = 1.0/L
 
@@ -145,7 +145,7 @@ def RidgeRegression(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kma
     ATA = np.matmul(A.T, A)
 
     # If step_size is not explicitly given - calculate it from A
-    if step_size == None:
+    if step_size is None:
         L = max(LA.eigvalsh(ATA))
         step_size = 1.0/L
 
@@ -225,9 +225,8 @@ def ElasticNet(A, y, x0, lamb, alpha, tol, step_size=None, cost_or_pos="cost", k
     ATA = np.matmul(A.T, A)
 
     # If step_size is not explicitly given - calculate it from A
-    if step_size == None:
-        L = max(LA.eigvalsh(ATA))
-        step_size = 1.0/L
+    if step_size is None:
+        step_size = 1.0/max(LA.eigvalsh(ATA))
 
     # Make sure the cost_or_pos is recognized
     if cost_or_pos not in ('cost', 'pos'):
@@ -239,13 +238,13 @@ def ElasticNet(A, y, x0, lamb, alpha, tol, step_size=None, cost_or_pos="cost", k
         raise DimensionMismatchError(error)
 
     # Prox is the one-norm prox with a extra weighting by alpha
-    proxg = (lambda v, theta: _Prox_1Norm(v,theta*alpha) )
+    proxg = (lambda v, theta: _Prox_1Norm(v, theta*alpha))
 
     gradf = (lambda x: np.matmul(ATA, x) - np.matmul(A.T, y) + (1-alpha)*lamb*x)
     if cost_or_pos == "cost":
-        cost = (lambda x: 0.5*LA.norm(np.matmul(A, x) - y)**2 +
-                          lamb*(alpha*LA.norm(x,1) +
-                          ((1-alpha)/2)*LA.norm(x)**2))
+        cost = (lambda x: 0.5*LA.norm(np.matmul(A, x) - y)**2 \
+                          + lamb*(alpha*LA.norm(x, 1) \
+                          + ((1-alpha)/2)*LA.norm(x)**2))
     else:
         cost = (lambda x: x)
 
@@ -349,7 +348,7 @@ def _test_Lasso(n):
         tol = 1e-8
         lamb = 0.2
 
-        # Run LASSO and time it 
+        # Run LASSO and time it
         start = time.time()
         x_Lasso, k_Lasso = Lasso(A, y, x0, lamb, tol, cost_or_pos="cost", kmax=100000)
         end = time.time()
@@ -407,7 +406,7 @@ def _test_RidgeRegression(n):
         tol = 1e-8
         lamb = 0.2
 
-        # Run RidgeRegression and time it - including Eigvalue calculation since it could be expensive
+        # Run RidgeRegression and time it
         start = time.time()
         x_RR, k_RR = RidgeRegression(A, y, x0, lamb, tol, cost_or_pos="pos", kmax=100000)
         end = time.time()
@@ -484,8 +483,12 @@ def _test_ElasticNet(n):
         end = time.time()
         BB_time = end - start
 
-        EN_cost = 0.5*LA.norm(np.matmul(A, x_EN) - y)**2 + lamb*(alpha*LA.norm(x_EN,1) + ((1-alpha)/2)*LA.norm(x_EN)**2)
-        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 + lamb*(alpha*LA.norm(x_BB,1) + ((1-alpha)/2)*LA.norm(x_BB)**2)
+        EN_cost = 0.5*LA.norm(np.matmul(A, x_EN) - y)**2 \
+                + lamb*(alpha*LA.norm(x_EN, 1) \
+                + ((1-alpha)/2)*LA.norm(x_EN)**2)
+        BB_cost = 0.5*LA.norm(np.matmul(A, x_BB) - y)**2 \
+                + lamb*(alpha*LA.norm(x_BB, 1) \
+                + ((1-alpha)/2)*LA.norm(x_BB)**2)
 
         print("============")
         print(f"Test                 : {i}")

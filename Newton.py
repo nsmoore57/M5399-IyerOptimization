@@ -157,7 +157,7 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao=1e-5):
     while LA.norm(dnew) > tol*(1 + np.abs(q(xnew))) and k < kmax:
         # Step size
         if k == 1:
-            gamma = np.matmul(xnew.T,dnew)/LA.norm(dnew)**2 + 1e-7
+            gamma = np.matmul(xnew.T, dnew)/LA.norm(dnew)**2 + 1e-7
         else:
             gamma = np.matmul((xnew - xold).T, dnew - dold)/LA.norm(dnew-dold)**2
 
@@ -217,12 +217,8 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     x0 = np.array([[3], [3]], dtype="float")
     tol = 1e-4
     kmax = 50000
-    a_low = 1e-9
-    a_high = 0.7
-    N = 20
-    CD_tao = 1e-5
 
-    print(GradDescent_ILS(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
+    print(GradDescent_ILS(Rosenbrock2, GRosenbrock2, x0, tol, kmax))
     """
 
     # Use CentralDifferences to approximate the gradient
@@ -290,7 +286,8 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
 
-def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, c_low=0.1, c_high=0.9, CD_tao=1e-5):
+def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9,
+                       N=20, c_low=0.1, c_high=0.9, CD_tao=1e-5):
     """
     Run Gradient Descent to find the approximate location of a solution to gradq(x) = 0
     Uses either the real gradient (passed as an argument) or a central difference approximation
@@ -447,12 +444,8 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao=1e-5):
     x0 = np.array([[3], [3]], dtype="float")
     tol = 1e-4
     kmax = 50000
-    a_low = 1e-9
-    a_high = 0.7
-    N = 20
-    CD_tao = 1e-5
 
-    print(BFGS(Rosenbrock2, GRosenbrock2, x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao))
+    print(BFGS(Rosenbrock2, GRosenbrock2, x0, tol, kmax))
     """
 
     # Use CentralDifferences to approximate the gradient
@@ -603,7 +596,9 @@ if __name__ == "__main__":
 
     def TestFunc2(x):
         """Another of Iyer's Test Functions - global min at (0.02, 1.6)"""
-        return 10*(-0.02*x[0] + 0.5*x[0]*x[0] + x[1])**2 + 128*(-0.02*x[0] + 0.5*x[0]*x[0] - x[1]/4) - (8e-5)*x[0]
+        return 10*(-0.02*x[0] + 0.5*x[0]*x[0] + x[1])**2 \
+             + 128*(-0.02*x[0] + 0.5*x[0]*x[0] - x[1]/4) \
+             - (8e-5)*x[0]
 
     Rosenbrock2 = (lambda x: Rosenbrock(2, x))
 
@@ -621,7 +616,8 @@ if __name__ == "__main__":
 
     # print("Testing Armijo")
     # t0 = time.time()
-    # x, k = GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    # x, k = GradDescent_Armijo(Rosenbrock2, "CD", x0, tol, kmax,
+    #                           a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     # t1 = time.time()
     # print("Norm of Error:" + str(LA.norm(x - np.array([[2.], [4.]]))))
     # print("Number of Iterations: " + str(k))
@@ -629,7 +625,8 @@ if __name__ == "__main__":
 
     # print("Testing ILS:")
     # t0 = time.time()
-    # x, k = GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax, a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
+    # x, k = GradDescent_ILS(Rosenbrock2, "CD", x0, tol, kmax,
+    #                        a_low=a_low, a_high=a_high, N=N, CD_tao=CD_tao)
     # t1 = time.time()
     # print("Norm of Error: " + str(LA.norm(x-np.array([[2.], [4.]]))))
     # print("Number of Iterations: " + str(k))

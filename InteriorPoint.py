@@ -88,14 +88,16 @@ def Barrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9
         print("Running Phase 1")
         Q_p1 = np.eye(n)
         c_p1 = -1*np.ones((n, 1))
-        x, lamb, s, k = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s, tol[0], kmax, rho, mu0, mumin)
+        x, lamb, s, k = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s,
+                                                     tol[0], kmax, rho, mu0, mumin)
         totalk += k
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x, lamb, s, k = _Barrier_Worker_EqualityOnly(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax, rho, mu0, mumin)
+    x, lamb, s, k = _Barrier_Worker_EqualityOnly(Q_p2, c_p2, A, b, x, lamb, s,
+                                                 tol[1], kmax, rho, mu0, mumin)
     totalk += k
 
     return x, totalk
@@ -158,7 +160,8 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
 
         z = 0.9*LA.norm(np.matmul(r.T, J))*LA.norm(d)
 
-        # Select the largest alpha_0 with 0 <= alpha_0 <=1 so that x + alpha_0*dx > 0 and s + alpha*ds > 0
+        # Select the largest alpha_0 with 0 <= alpha_0 <=1
+        # so that x + alpha_0*dx > 0 and s + alpha*ds > 0
         if all(v > 0 for v in dx) and all(v > 0 for v in ds):
             # Step is away from the boundary so we can take a full step
             alpha_bar = 1
@@ -226,7 +229,8 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
     if k > kmax:
         raise NonConvergenceError("kmax exceeded, consider raising it")
     if mu < mumin:
-        raise NonConvergenceError("mu became smaller than mumin before reaching convergence. Consider lowering mumin")
+        raise NonConvergenceError("mu became smaller than mumin before reaching convergence. \
+        Consider lowering mumin")
 
     return x, lamb, s, k
 
@@ -351,7 +355,8 @@ def _DimensionsCompatible_EqualityInequality(Q, c, A, b, C, d):
     if c.shape[1] != 1: return False, "c must be a column vector"
     return True, "No error"
 
-def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, tol, kmax, rho, mu0, mumin):
+def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, tol,
+                                       kmax, rho, mu0, mumin):
     """
     Worker method for the InteriorPointBarrier_EqualityInequality function
 
@@ -406,7 +411,8 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
 
         z = 0.9*LA.norm(np.matmul(r.T, J))*LA.norm(direction)
 
-        # Select the largest alpha_0 with 0 <= alpha_0 <=1 so that x + alpha_0*dx > 0 and s + alpha*ds > 0
+        # Select the largest alpha_0 with 0 <= alpha_0 <=1
+        # so that x + alpha_0*dx > 0 and s + alpha*ds > 0
         if all(v >= 0 for v in dx) and \
            all(v >= 0 for v in ds) and \
            all(v >= 0 for v in dt) and \
@@ -506,7 +512,8 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
 
 def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9):
     """
-    Run Interior Point Meherotra Predictor Corrector Method to solve the quadratic programming problem:
+    Run Interior Point Meherotra Predictor Corrector Method to solve
+    the quadratic programming problem:
     min (1/2)x^T*Q*x + c^T*x subject to Ax = b and x >= 0,
 
     That is, it solves
@@ -572,7 +579,8 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     # - Can use the Newton's Inexact Line Search for this
     Q_p1 = np.eye(n)
     c_p1 = -1*np.ones((n, 1))
-    x, lamb, s, iters[1] = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s, tol[0], kmax[0], rho, mu0, mumin)
+    x, lamb, s, iters[1] = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s,
+                                                        tol[0], kmax[0], rho, mu0, mumin)
 
     # The above Phase one doesn't take Q or c into account, in particular with regards to lamb and s
     # Here so improve the point from Phase I for s and lamb
@@ -651,7 +659,8 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
         # Solve for dcorr
         # Need RHS first
         rhs_row1 = np.zeros((m+n, 1))
-        rhs_row2 = sigma*mu*np.ones((n, 1)) - np.array([[dx_pred[i, 0]*ds_pred[i, 0]] for i in range(n)])
+        rhs_row2 = sigma*mu*np.ones((n, 1)) \
+                 - np.array([[dx_pred[i, 0]*ds_pred[i, 0]] for i in range(n)])
         rhs = np.vstack((rhs_row1, rhs_row2))
         # Now solve for d_corr
         d_corr = LA.lstsq(J, rhs, rcond=None)[0]
@@ -686,7 +695,8 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
     if k > kmax and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
         raise NonConvergenceError("kmax exceeded, consider raising it")
     if mu < mumin and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
-        raise NonConvergenceError("mu became smaller than mumin before reaching convergence. Consider lowering mumin")
+        raise NonConvergenceError("mu became smaller than mumin before reaching convergence.\
+        Consider lowering mumin")
 
     return x, lamb, s, k
 
@@ -723,7 +733,10 @@ if __name__ == "__main__":
     #          3x_1 +  2x_2 <= 2124
     #          2x_1 +  5x_2 <= 2700
 
-    # A = np.array([[-7, -10, -1, 0, 0, 0], [-3, -5, 0, -1, 0, 0], [-3, -2, 0, 0, -1, 0], [-2, -5, 0, 0, 0, -1]])
+    # A = np.array([[-7, -10, -1, 0, 0, 0],
+    #               [-3, -5, 0, -1, 0, 0],
+    #               [-3, -2, 0, 0, -1, 0],
+    #               [-2, -5, 0, 0, 0, -1]])
     # b = np.array([[-6300, -3600, -2124, -2700]]).T
     # c = np.array([[-10, -9, 0, 0, 0, 0]]).T
     # Q = np.zeros((6, 6))
@@ -807,5 +820,5 @@ if __name__ == "__main__":
     true_answer = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
     print("Cost of found solution: " + str(np.matmul(c.T, x)[0, 0]))
     print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)[0, 0]))
-    print("Residual of found solution: ", LA.norm(np.matmul(A,x)-b))
-    print("Residual of 'true' solution: ", LA.norm(np.matmul(A,true_answer)-b))
+    print("Residual of found solution: ", LA.norm(np.matmul(A, x)-b))
+    print("Residual of 'true' solution: ", LA.norm(np.matmul(A, true_answer)-b))
