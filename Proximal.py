@@ -115,7 +115,6 @@ def RidgeRegression(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kma
     If the optimal is found within tolerance
     x        -- Coordinates of the optimal value
     k        -- The number of total iterations required
-                - Includes the iterations needed to find the first feasible point
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
@@ -194,7 +193,6 @@ def ElasticNet(A, y, x0, lamb, alpha, tol, step_size=None, cost_or_pos="cost", k
     If the optimal is found within tolerance
     x        -- Coordinates of the optimal value
     k        -- The number of total iterations required
-                - Includes the iterations needed to find the first feasible point
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
@@ -266,14 +264,13 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
                    - typically 1/(largest eigenvalue of A) if available
     cost        -- For Stopping condition
                    - Takes 1 argument - the position
-                   Function returns when norm(cost_x - cost_{x+1}) < tol
+                   Function returns when norm(cost_k - cost_{k+1}) < tol
     kmax        -- Maximum steps allowed, used for stopping condition
 
     Returns:
     If the optimal is found within tolerance
     x        -- Coordinates of the optimal value
     k        -- The number of total iterations required
-                - Includes the iterations needed to find the first feasible point
 
     Errors:
     Raises a NonConvergenceError if the optimum cannot be found within tolerance
@@ -503,4 +500,4 @@ def _test_ElasticNet(n):
 if __name__ == "__main__":
     # _test_Lasso(5)
     # _test_RidgeRegression(5)
-    _test_ElasticNet(5)
+    # _test_ElasticNet(5)
