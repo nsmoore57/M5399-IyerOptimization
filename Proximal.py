@@ -320,6 +320,43 @@ def Prox_1Norm(v, theta):
             ret[i, 0] = v[i, 0] - theta*np.sign(v[i, 0])
     return ret
 
+def Proj_1NormBall(v,r, tol=1e-5, kmax=1000):
+    """
+    Calculates the projection of v on the ball of radius r in the 1-norm
+
+    Uses the bisection method to determine the t value within tolerance tol
+    using a maximum of kmax steps
+    """
+
+    # Find t - Use Bisection Method
+    n = v.shape[0]
+    tmin = np.min(v) - r/n
+    tmax = np.max(v) - r/n
+    t = (tmax + tmin)/2.0
+
+    diff = np.sum(np.maximum(np.abs(v) - t,0)) - r
+
+    while abs(diff) > tol and k < kmax:
+        if diff == 0:
+            # We're done
+            break
+        elif diff > 0:
+            tmin = t
+        else:
+            tmax = t
+        t = (tmax + tmin)/2.0
+        diff = np.sum(np.maximum(np.abs(v) - t,0)) - r
+
+    # Use t to find the projection
+    ret = np.zeros(v.shape)
+    for i in range(ret.shape[0]):
+        if v[i,0] >= t:
+            ret[i,0] = v[i,0] - t
+        elif v[i,0] <= -t:
+            ret[i,0] = v[i,0] + t
+
+    return ret
+
 def Proj_2NormBall(v, r):
     """Calculates the projection of v on the ball of radius r in the 2-norm"""
     return v if LA.norm(v) <= r else r*v/LA.norm(v)
@@ -343,7 +380,16 @@ def Proj_EqualityAffine(C,d,v):
     # return the proj: x0 + v - Q*Q^T*v
     return x0 + v - np.matmul(np.matmul(Q, Q.T),v)
 
+def Proj_InequalityAffine(A,b,v):
+    """Calculates the projection of b onto the affine subspace defined by Ax >= b"""
+    if all(np.matmul(A,v) - b >= 0):
+        return v
+    else:
+        return Proj_EqualityAffine(A, b, v)
 
+def Proj_Intersection(v, proj1, proj2, tol=1e-5, kmax=1000):
+    """"""
+    return None
 def _DimensionsCompatible_Lasso(A, y, x0):
     """Check to make sure the dimensions of a quadratic programming problem are compatible"""
     if A.shape[0] != y.shape[0]: return False, f"Rows A ({A.shape[0]}) != Rows y ({y.shape[0]})"
@@ -547,33 +593,19 @@ def _test_Proj_EqualityAffine():
     print("Cx - d: ")
     print(np.matmul(C,x)-d)
 
+def _test_Proj_1NormBall():
+    r = 1
+    v = np.array([[2, 3]]).T
+
+    # Should be [0, 1]'
+    proj = Proj_1NormBall(v, r)
+    print("proj: ")
+    print(proj)
 
 if __name__ == "__main__":
     # _test_Lasso(5)
     # _test_RidgeRegression(5)
     # _test_ElasticNet(5)
     # _test_Proj_EqualityAffine()
+    _test_Proj_1NormBall()
     # print("Nothing here")
-
-    Q = np.eye(4)
-    c = np.array([[-2, 0, 0, -3]]).T
-    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
-    d = np.array([[7, 6]]).T
-
-    x0 = np.random.normal(size=(4, 1))
-    gradf = (lambda x: 2*x + c)
-    proxg = (lambda v, theta: Proj_EqualityAffine(C, d, v))
-    lamb = 0.2
-    tol = 1e-9
-    step_size = 1e-4
-    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T,x))
-
-    x_Iyer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
-
-    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
-    print("x:")
-    print(x)
-    print(f"k = {k}")
-    print(f"Cx = d  : {np.allclose(np.matmul(C,x), d)}")
-    print(f"Cost of found solution: {cost(x)}")
-    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
