@@ -15,7 +15,6 @@ def test_forwardSubstitution_LowerTri():
     sol = np.array([[1, 1, 1, 1]]).T
     assert all(testLA.forwardSubstitution_LowerTri(L, b) == sol)
 
-
 def test_backSubstitution_UpperTri():
     """Test LinearAlgebra.backSubstitution_UpperTri function"""
 

@@ -4,16 +4,34 @@
 import numpy as np
 import numpy.linalg as LA
 
+class LinAlgError(Exception):
+    """Base class for other exceptions"""
+    pass
+
+class DimensionMismatchError(LinAlgError):
+    """For errors involving incorrect dimensions"""
+    pass
+
 def forwardSubstitution_LowerTri(L, b):
     """
     Completes forward Substitution to solve the linear system
          Lz = b
     where L is lower triangular and b is n x 1 np.array
     """
-    z = np.zeros(b.shape)
-    z[0] = b[0]/L[0, 0]
+    # Dimension Check
+    if L.shape[0] != L.shape[1]:
+        raise DimensionMismatchError("L must be square")
+    if L.shape[0] != b.shape[0]:
+        raise DimensionMismatchError("Rows L ({L.shape[0]} != Rows b ({b.shape[0]}))")
+
+    n = L.shape[0]
+    z = np.zeros((n, 1))
+    z[0, 0] = b[0, 0]/L[0, 0]
     for i in range(1, z.shape[0]):
-        z[i, 0] = (b[i] - np.matmul(L[i, 0:i], z[0:i, 0]))/L[i, i]
+        s = 0
+        for j in range(i):
+            s += L[i, j]*z[j, 0]
+        z[i, 0] = (b[i, 0] - s)/L[i, i]
 
     return z
 
@@ -23,12 +41,22 @@ def backSubstitution_UpperTri(U, b):
          Ux = b
     where U is upper triangular and b is a n x 1 np.array
     """
-    z = np.zeros(b.shape)
-    z[-1] = b[-1]/U[-1, -1]
-    for i in range(z.shape[0]-1, -1, -1):
-        z[i, 0] = (b[i] - np.matmul(U[i, i+1:], z[i+1:, 0]))/U[i, i]
+    # Dimension Check
+    if U.shape[0] != U.shape[1]:
+        raise DimensionMismatchError("Q must be square")
+    if U.shape[0] != b.shape[0]:
+        raise DimensionMismatchError("Rows Q ({Q.shape[0]} != Rows b ({b.shape[0]}))")
 
-    return z
+    n = U.shape[0]
+    x = np.zeros((n, 1))
+    x[n-1, 0] = b[n-1, 0]/U[n-1, n-1]
+
+    for i in range(n-2, -1, -1):
+        s = 0
+        for j in range(i+1, n):
+            s += U[i, j]*x[j, 0]
+        x[i, 0] = (b[i, 0] - s)/U[i, i]
+    return x
 
 def householderQR(A):
     """
@@ -92,26 +120,4 @@ def lowRank_MinNormLS(A, b):
     return np.matmul(R.T, z)
 
 if __name__ == "__main__":
-    A = np.array([[3, 10, 2, 3],
-                  [0, 0, 5, 7],
-                  [1, 4, 4, 7],
-                  [9, 4, 7, 1],
-                  [7, 8, 7, 1],
-                  [3, 8, 8, 5]], dtype="float")
-    b = np.array([[8, 2, 5, 7, 9, 10]], dtype="float").T
-    # print(LA.norm(np.matmul(A,LA.lstsq(A,b,rcond=None)[0])-b))
-    # x = LSQR(A,b)
-    # Ax = np.matmul(A,x)
-    # b.shape = (-1,1)
-    # # print(b)
-    # # print(np.matmul(A,x) - b.reshape((-1,1)))
-    # # print(np.matmul(A,x))
-    # print(LA.norm(np.matmul(A,x)-b))
-
-    A = np.array([[2, -1, 1, -3],
-                  [0, 1, -1, -1,]], dtype="float")
-    b = np.array([[3, 1]], dtype="float").T
-
-    x = lowRank_MinNormLS(A, b)
-    print(x)
-    print(LA.norm(np.matmul(A, x)-b))
+    print("Nothing here")
