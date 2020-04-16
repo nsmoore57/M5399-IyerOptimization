@@ -2,6 +2,7 @@
 """Module for Proximal Methods"""
 import numpy as np
 import numpy.linalg as LA
+import LinearAlgebra as myLA
 
 # Define Exceptions
 class ProxError(Exception):
@@ -91,7 +92,7 @@ def Lasso(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kmax=100000):
     else:
         cost = (lambda x: x)
 
-    return ProximalMethod(x0, gradf, _Prox_1Norm, lamb, tol, step_size, cost, kmax)
+    return ProximalMethod(x0, gradf, Prox_1Norm, lamb, tol, step_size, cost, kmax)
 
 def RidgeRegression(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kmax=100000):
     """
@@ -236,7 +237,7 @@ def ElasticNet(A, y, x0, lamb, alpha, tol, step_size=None, cost_or_pos="cost", k
         raise DimensionMismatchError(error)
 
     # Prox is the one-norm prox with a extra weighting by alpha
-    proxg = (lambda v, theta: _Prox_1Norm(v, theta*alpha))
+    proxg = (lambda v, theta: Prox_1Norm(v, theta*alpha))
 
     gradf = (lambda x: np.matmul(ATA, x) - np.matmul(A.T, y) + (1-alpha)*lamb*x)
     if cost_or_pos == "cost":
@@ -311,13 +312,37 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
 
     return xnew, k
 
-def _Prox_1Norm(v, theta):
+def Prox_1Norm(v, theta):
     """Calculate the Prox operator for the 1 norm - used for Lasso"""
     ret = np.zeros(v.shape)
     for i in range(ret.shape[0]):
         if abs(v[i, 0]) >= theta:
             ret[i, 0] = v[i, 0] - theta*np.sign(v[i, 0])
     return ret
+
+def Proj_2NormBall(v, r):
+    """Calculates the projection of v on the ball of radius r in the 2-norm"""
+    return v if LA.norm(v) <= r else r*v/LA.norm(v)
+
+def Proj_InfNormBall(v, r):
+    """Calculates the projection of v on the ball of radius r in the infinity-norm"""
+    return np.maximum(np.minimum(x,r),-r)
+
+def Proj_EqualityAffine(C,d,v):
+    """Calculates the projection of b onto the affine subspace defined by Cx=D"""
+    # Calculate thin QR decomp of C
+    Q, R = LA.qr(C.T)
+
+    # Find theta s.t. R^T*R theta = d
+    # R^T*R is upper triangular and square so we use
+    theta = LA.solve(np.matmul(R.T,R), d)
+
+    # Find x0 as C^T*theta
+    x0 = np.matmul(C.T,theta)
+
+    # return the proj: x0 + v - Q*Q^T*v
+    return x0 + v - np.matmul(np.matmul(Q, Q.T),v)
+
 
 def _DimensionsCompatible_Lasso(A, y, x0):
     """Check to make sure the dimensions of a quadratic programming problem are compatible"""
@@ -497,7 +522,58 @@ def _test_ElasticNet(n):
         print(f"Time EN    (sec)     : {EN_time}")
         print(f"Time BB    (sec)     : {BB_time}")
 
+def _test_Proj_EqualityAffine():
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    d = np.array([[7, 6]]).T
+
+    x0 = np.random.normal(size=(4, 1))
+    gradf = (lambda x: 2*x + c)
+    proxg = (lambda v, theta: Proj_EqualityAffine(C, d, v))
+    lamb = 0.2
+    tol = 1e-9
+    step_size = 1e-4
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T,x))
+
+    x_Iyer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
+    print("Cx - d: ")
+    print(np.matmul(C,x)-d)
+
+
 if __name__ == "__main__":
     # _test_Lasso(5)
     # _test_RidgeRegression(5)
     # _test_ElasticNet(5)
+    # _test_Proj_EqualityAffine()
+    # print("Nothing here")
+
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    d = np.array([[7, 6]]).T
+
+    x0 = np.random.normal(size=(4, 1))
+    gradf = (lambda x: 2*x + c)
+    proxg = (lambda v, theta: Proj_EqualityAffine(C, d, v))
+    lamb = 0.2
+    tol = 1e-9
+    step_size = 1e-4
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T,x))
+
+    x_Iyer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cx = d  : {np.allclose(np.matmul(C,x), d)}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
