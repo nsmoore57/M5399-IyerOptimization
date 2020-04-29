@@ -384,7 +384,7 @@ def Proj_InfNormBall(v, r):
 
 def Proj_EqualityAffine(C, d, v):
     """Calculates the projection of b onto the affine subspace defined by Cx=D"""
-    # Calculate thin QR decomp of C
+    # Calculate thin QR decomp of C.T
     Q, R = LA.qr(C.T)
 
     # Find theta s.t. R^T*R theta = d
@@ -401,8 +401,7 @@ def Proj_InequalityAffine(A, b, v):
     """Calculates the projection of b onto the affine subspace defined by Ax >= b"""
     if all(np.matmul(A,v) - b >= 0):
         return v
-    else:
-        return Proj_EqualityAffine(A, b, v)
+    return Proj_EqualityAffine(A, b, v)
 
 def Proj_Intersection(v, proj1, proj2, tol=1e-7, kmax=1000):
     """
@@ -672,8 +671,8 @@ def _test_Proj_1NormBall():
 def _test_Proj_Intersection():
     Q = np.eye(4)
     c = np.array([[-2, 0, 0, -3]]).T
-    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
-    d = np.array([[7, 6]]).T
+    A = -1*np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    b = -1*np.array([[7, 6]]).T
 
     x0 = np.random.normal(size=(4, 1))
     gradf = (lambda x: 2*x + c)
@@ -681,59 +680,49 @@ def _test_Proj_Intersection():
     # Project onto 2-norm ball of radius 2
     proj1 = (lambda v: Proj_2NormBall(v, 2))
 
-    # Project onto affine Cx=d
-    proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
+    # Project onto affine Ax >= b
+    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
 
-    # Now the Prox operator in the alternating method between the two
-    proxg = (lambda v, theta: Proj_Intersection(v, proj1, proj2, tol=1e-7))
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Proj_Intersection(v, proj1, proj2, tol=1e-4))
 
-    lamb = 0.2
-    tol = 1e-10
-    step_size = 1e-2
-    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T,x))
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
 
-    x_Iyer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
+    x_Iyer = np.array([[0.5016, 0.5441, 1.1308, 0.4166]]).T
 
-    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
-    print("Solution found enforcing Cx = d last:")
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e5)
     print("x:")
     print(x)
     print(f"k = {k}")
     print(f"Cost of found solution: {cost(x)}")
     print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
-    print(f"||Cx - d|| of found solution: {LA.norm(np.matmul(C,x)-d)}")
-    print(f"||Cx - d|| of Iyer solution: {LA.norm(np.matmul(C,x_Iyer)-d)}")
+    print(f"Ax - b of found solution:")
+    print(np.matmul(A, x)-b)
+    print(f"Ax - b of Iyer solution:")
+    print(np.matmul(A, x_Iyer)-b)
     print(f"2-norm of found solution: {LA.norm(x)}")
     print(f"2-norm of Iyer's solution: {LA.norm(x_Iyer)}")
     print("===========================================")
 
-    proxg = (lambda v, theta: Proj_Intersection(v, proj2, proj1, tol=1e-7))
-    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
-    print("Solution found enforcing norm(x) <= 2 last:")
-    print("x:")
-    print(x)
-    print(f"k = {k}")
-    print(f"Cost of found solution: {cost(x)}")
-    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
-    print(f"||Cx - d|| of found solution: {LA.norm(np.matmul(C,x)-d)}")
-    print(f"||Cx - d|| of Iyer solution: {LA.norm(np.matmul(C,x_Iyer)-d)}")
-    print(f"2-norm of found solution: {LA.norm(x)}")
-    print(f"2-norm of Iyer's solution: {LA.norm(x_Iyer)}")
-    print("===========================================")
-
+    # Best found so far:
+    # x = np.array([[0.74829533], [0.08294718], [0.02306962], [1.282799]])
 
 if __name__ == "__main__":
     # _test_Lasso(5)
     # _test_RidgeRegression(5)
-    print("Elastic Net:")
-    print("===================================")
-    _test_ElasticNet(5)
-    print("Projection onto Cx=d Affine Set:")
-    print("===================================")
-    _test_Proj_EqualityAffine()
-    print("Projection onto 1-Norm Ball:")
-    print("===================================")
-    _test_Proj_1NormBall()
+    # print("Elastic Net:")
+    # print("===================================")
+    # _test_ElasticNet(5)
+    # print("Projection onto Cx=d Affine Set:")
+    # print("===================================")
+    # _test_Proj_EqualityAffine()
+    # print("Projection onto 1-Norm Ball:")
+    # print("===================================")
+    # _test_Proj_1NormBall()
     print("Projection onto Intersection of 2-Norm Ball and Affine Set:")
     print("===================================")
     _test_Proj_Intersection()
