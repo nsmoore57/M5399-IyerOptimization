@@ -3,14 +3,23 @@
 import numpy as np
 import numpy.linalg as LA
 import LinearAlgebra as myLA
+import warnings
 
 # Define Exceptions
 class IPError(Exception):
     """Base class for other exceptions"""
     pass
 
+class IPWarning(UserWarning):
+    """Base class for other warnings"""
+    pass
+
+class NonConvergenceWarning(IPWarning):
+    """For Warnings where convergence is not complete"""
+    pass
+
 class NonConvergenceError(IPError):
-    """For Errors where convergence is not complete"""
+    """For Warnings where convergence is not complete"""
     pass
 
 class DimensionMismatchError(IPError):
@@ -51,7 +60,6 @@ def Barrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
-    Raises a NonConvergenceError if the optimum cannot be found within tolerance
 
     Example:
     # Set up and solve a linear programming problem (Q = 0)
@@ -227,10 +235,10 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
         normr = LA.norm(r)**2
 
     if k > kmax:
-        raise NonConvergenceError("kmax exceeded, consider raising it")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
     if mu < mumin:
-        raise NonConvergenceError("mu became smaller than mumin before reaching convergence. \
-        Consider lowering mumin")
+        warnings.warn("mu became smaller than mumin before reaching convergence. \
+        Consider lowering mumin", NonConvergenceWarning)
 
     return x, lamb, s, k
 
@@ -271,7 +279,10 @@ def Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e2
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
-    Raises a NonConvergenceError if the optimum cannot be found within tolerance
+    Raises a NonConvergenceError if the optimum step size cannot be found within tolerance
+
+    Warnings:
+    Issues a NonConvergenceWarning if kmax or mumin are reached before convergence
 
     Example:
     # Solve the problem:
@@ -503,10 +514,10 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
         normr = LA.norm(r)**2
 
     if k > kmax:
-        raise NonConvergenceError("kmax exceeded, consider raising it")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
     if mu < mumin:
-        raise NonConvergenceError(f"mu became smaller than mumin before reaching convergence.\
-                                    Consider lowering mumin.\n x = {x}")
+        warnings.warn(f"mu became smaller than mumin before reaching convergence.\
+                                    Consider lowering mumin.\n x = {x}", NonConvergenceWarning)
 
     return x, lamb, s, t, theta, k
 
@@ -550,7 +561,9 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
-    Raises a NonConvergenceError if the optimum cannot be found within tolerance
+
+    Warnings:
+    Issuse a NonConvergenceError if the optimum cannot be found within tolerance
 
     Example:
     """
@@ -693,10 +706,10 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
         rlamb = r[n:n+m]
 
     if k > kmax and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
-        raise NonConvergenceError("kmax exceeded, consider raising it")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
     if mu < mumin and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
-        raise NonConvergenceError("mu became smaller than mumin before reaching convergence.\
-        Consider lowering mumin")
+        warnings.warn("mu became smaller than mumin before reaching convergence.\
+        Consider lowering mumin", NonConvergenceWarning)
 
     return x, lamb, s, k
 

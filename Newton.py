@@ -2,12 +2,17 @@
 """Module for Newton's Method code - Newton's Method for Rooting and Gradient Descent """
 import numpy as np
 import numpy.linalg as LA
+import warnings
 
 class NewtonError(Exception):
     """Base class for other exceptions"""
     pass
 
-class NonConvergenceError(NewtonError):
+class NewtonWarning(UserWarning):
+    """Base class for other warnings"""
+    pass
+
+class NonConvergenceWarning(NewtonWarning):
     """For Errors where convergence is not complete"""
     pass
 
@@ -38,8 +43,8 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
     x        -- Coordinates of the zero, if found within tolerance
     k        -- If a zero is found, the number of iterations required
 
-    Exceptions:
-    Raises NonConvergenceError if kmax is exceeded before tolerance is achieved
+    Warnings:
+    Issues NonConvergenceWarning if kmax is exceeded before tolerance is achieved
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -98,12 +103,12 @@ def Newton(f, x0, tol, kmax, c=0.5, tao=1e-6, reg_const=1e-7):
 
         s = LA.norm(f_xk)**2
 
-    # If kmax gets exceeded, we can't trust the answer so raise an Error
+    # If kmax gets exceeded, we can't trust the answer so issue a warning
     if k >= kmax:
         # For debugging purposes
         # print("k exceeded kmax, can't trust answer")
         # return xk
-        raise NonConvergenceError("kmax exceeded, considering raising kmax")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
@@ -131,7 +136,9 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao=1e-5):
 
     Exceptions:
     Raises InvalidArgumentError if gradq is not a callable or "CD"
-    Raises NonConvergenceError if kmax is exceeded before tolerance is achieved
+
+    Warnings:
+    Issues NonConvergenceWarning if kmax is exceeded before tolerance is achieved
 
     Example:
     x0 = np.array([10], dtype="float")
@@ -168,11 +175,9 @@ def GradDescent_BB(q, gradq, x0, tol, kmax, CD_tao=1e-5):
         dnew = gradq(xnew)
         k += 1
 
-    # If kmax gets exceeded, we can't trust the answer so raise an error
+    # If kmax gets exceeded, we can't trust the answer so issue a warning
     if k >= kmax:
-        # For debugging purposes
-        # return xnew, k
-        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xnew, k
@@ -204,7 +209,9 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
 
     Exceptions:
     Raises InvalidArgumentError if gradq is not a callable or "CD"
-    Raises NonConvergenceError if tolerance is not achieved
+
+    Warnings:
+    Issues NonConvergenceWarning if tolerance is not achieved
 
     Example:
     def Rosenbrock2(x):
@@ -261,9 +268,9 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
 
         # Not good, probably a step size issue
         if phimin > 0:
-            # return xk, k
-            raise NonConvergenceError("No more steps to take downward, don't trust answer.\
-                                       Probably a step size issue.  Consider increasing N")
+            warnings.warn("No more steps to take downward, don't trust answer.\
+                          Probably a step size issue.  Consider increasing N",
+                          NonConvergenceWarning)
 
         # Update xk
         xk -= alpha[imin]*(gq_cache/n_gq_cache)
@@ -277,11 +284,9 @@ def GradDescent_ILS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_ta
         # Increase iteration count
         k += 1
 
-    # If kmax gets exceeded, we can't trust the answer so raise an error
+    # If kmax gets exceeded, we can't trust the answer so issue a warning
     if k >= kmax:
-        # For debugging purposes
-        # return xk
-        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
@@ -316,7 +321,9 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9,
 
     Exceptions:
     Raises InvalidArgumentError if gradq is not a callable or "CD"
-    Raises NonConvergenceError if tolerance is not achieved
+
+    Warnings:
+    Issues a NonConvergenceWarning if tolerance is not achieved
 
     Example:
     def Rosenbrock2(x):
@@ -381,8 +388,9 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9,
         # Not good, probably a step size issue
         if phimin is None or phimin > 0:
             # return xk, k
-            raise NonConvergenceError("No more steps to take downward, don't trust answer. \
-                                       Probably a step size issue.  Consider increasing N")
+            warnings.warn("No more steps to take downward, don't trust answer. \
+                          Probably a step size issue.  Consider increasing N",
+                          NonConvergenceWarning)
 
         # Update xk
         xk -= alpha[imin]*gq_cache
@@ -395,11 +403,9 @@ def GradDescent_Armijo(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9,
         # Increase iteration count
         k += 1
 
-    # If kmax gets exceeded, we can't trust the answer so raise error
+    # If kmax gets exceeded, we can't trust the answer so issue warning
     if k >= kmax:
-        # For debugging purposes
-        # return xk, k
-        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return xk, k
@@ -431,7 +437,9 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao=1e-5):
 
     Exceptions:
     Raises InvalidArgumentError if gradq is not a callable or "CD"
-    Raises NonConvergenceError if tolerance is not achieved
+
+    Warnings:
+    Issue a NonConvergenceWarning if tolerance is not achieved
 
     Example:
     def Rosenbrock2(x):
@@ -493,10 +501,9 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao=1e-5):
 
         # Not good, probably a step size issue
         if phimin > 0:
-            # For debugging purposes
-            # return x, k
-            raise NonConvergenceError("No more steps to take downward, don't trust answer. \
-                                       Probably a step size issue.  Consider increasing N")
+            warnings.warn("No more steps to take downward, don't trust answer. \
+                          Probably a step size issue.  Consider increasing N",
+                          NonConvergenceWarning)
 
         s = alpha[imin]*(normalized_d)
         y = gradq(x + s) - gq_cache
@@ -525,11 +532,9 @@ def BFGS(q, gradq, x0, tol, kmax, a_low=1e-9, a_high=0.9, N=20, CD_tao=1e-5):
         d = -np.matmul(H, gq_cache)
         normalized_d = d/LA.norm(d)
 
-    # If kmax gets exceeded, we can't trust the answer so raise error
+    # If kmax gets exceeded, we can't trust the answer so issue a warning
     if k >= kmax:
-        # For debugging purposes
-        # return x, k
-        raise NonConvergenceError("Kmax exceeded, consider raise kmax")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     # Otherwise, we stopped the above loop because we're within tolerance so the answer is good
     return x, k

@@ -2,14 +2,19 @@
 """Module for Proximal Methods"""
 import numpy as np
 import numpy.linalg as LA
+import warnings
 
 # Define Exceptions
+class ProxWarning(UserWarning):
+    """Base class for other warnings"""
+    pass
+
 class ProxError(Exception):
     """Base class for other exceptions"""
     pass
 
-class NonConvergenceError(ProxError):
-    """For Errors where convergence is not complete"""
+class NonConvergenceWarning(ProxWarning):
+    """For Warnings where convergence is not complete"""
     pass
 
 class DimensionMismatchError(ProxError):
@@ -46,8 +51,10 @@ def Lasso(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kmax=100000):
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
-    Raises a NonConvergenceError if the optimum cannot be found within tolerance
     Raises a InvalidArgumentError if cost_or_pos takes a value other than "cost" or "pos"
+
+    Warnings:
+    Issues a NonConvergenceWarning if the optimum cannot be found within tolerance
 
     Example:
     m = np.random.randint(8, 15)
@@ -118,8 +125,10 @@ def RidgeRegression(A, y, x0, lamb, tol, step_size=None, cost_or_pos="cost", kma
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
-    Raises a NonConvergenceError if the optimum cannot be found within tolerance
     Raises a InvalidArgumentError if cost_or_pos takes a value other than "cost" or "pos"
+
+    Warnings:
+    Issues a NonConvergenceWarning if the optimum cannot be found within tolerance
 
     Example:
     m = np.random.randint(8, 15)
@@ -193,8 +202,10 @@ def ElasticNet(A, y, x0, lamb, alpha, tol, step_size=None, cost_or_pos="cost", k
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
-    Raises a NonConvergenceError if the optimum cannot be found within tolerance
     Raises a InvalidArgumentError if cost_or_pos takes a value other than "cost" or "pos"
+
+    Warnings:
+    Issues a NonConvergenceWarning if the optimum cannot be found within tolerance
 
     Example:
     m = np.random.randint(8, 15)
@@ -270,8 +281,10 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
     k        -- The number of total iterations required
 
     Errors:
-    Raises a NonConvergenceError if the optimum cannot be found within tolerance
     Raises a InvalidArgumentError if any of the expected callable arguments are not callable
+
+    Warnings:
+    Issues a NonConvergenceWarning if the optimum cannot be found within tolerance
     """
 
     # Check if gradf is callable
@@ -304,7 +317,7 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
         k += 1
 
     if k >= kmax:
-        raise NonConvergenceError("kmax exceeded, consider raising it")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     return xnew, k
 
@@ -349,7 +362,7 @@ def Proj_1NormBall(v, r, tol=1e-5, kmax=1000):
         k += 1
 
     if k >= kmax:
-        raise NonConvergenceError("kmax exceeded before bisection converged")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     # Use t to find the projection
     ret = np.zeros(v.shape)
@@ -437,7 +450,7 @@ def Proj_Intersection(v, proj1, proj2, tol=1e-7, kmax=1000):
         k += 1
 
     if k >= kmax:
-        raise NonConvergenceError("kmax exceeded before convergence")
+        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
 
     return x
 
