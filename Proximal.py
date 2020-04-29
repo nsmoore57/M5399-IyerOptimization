@@ -403,15 +403,14 @@ def Proj_InequalityAffine(A, b, v):
         return v
     return Proj_EqualityAffine(A, b, v)
 
-def Proj_Intersection(v, proj1, proj2, tol=1e-7, kmax=1000):
+def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
     """
     Uses the alternating projections method to find the projection of v
-    onto S_1 intersect S_2
+    onto the intersection of all S_i
 
     Input Arguments:
     v           -- vector to project
-    proj1       -- callable that accepts one argument v, and projects it into S_1
-    proj2       -- callable that accepts one argument v, and projects it into S_2
+    projs       -- tuple of callables, each projs[i] accepts one argument v, and projects it into S_i
     tol         -- Error tolerance for stopping condition
                    -- Proj complete when distance between projections is < tol
     kmax        -- Maximum steps allowed, used for stopping condition
@@ -435,7 +434,7 @@ def Proj_Intersection(v, proj1, proj2, tol=1e-7, kmax=1000):
     proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
 
     # Now the Prox operator in the alternating method between the two
-    proj = Proj_Intersection(v, proj1, proj2))
+    proj = Proj_Intersection(v, (proj1, proj2)))
     """
     x = v.copy()
     xold = None
