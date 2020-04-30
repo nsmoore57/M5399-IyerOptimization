@@ -330,6 +330,7 @@ def Prox_1Norm(v, theta):
     return ret
 
 def Prox_2Norm(v, theta):
+    """Calculate the Prox operator for the 2 norm"""
     return v/(theta + 1)
 
 def Proj_1NormBall(v, r, tol=1e-5, kmax=1000):
@@ -346,7 +347,7 @@ def Proj_1NormBall(v, r, tol=1e-5, kmax=1000):
     tmax = np.max(v) - r/n
     t = (tmax + tmin)/2.0
 
-    diff = np.sum(np.maximum(np.abs(v) - t,0)) - r
+    diff = np.sum(np.maximum(np.abs(v) - t, 0)) - r
     k = 0
 
     while abs(diff) > tol and k < kmax:
@@ -358,7 +359,7 @@ def Proj_1NormBall(v, r, tol=1e-5, kmax=1000):
         else:
             tmax = t
         t = (tmax + tmin)/2.0
-        diff = np.sum(np.maximum(np.abs(v) - t,0)) - r
+        diff = np.sum(np.maximum(np.abs(v) - t, 0)) - r
         k += 1
 
     if k >= kmax:
@@ -367,10 +368,10 @@ def Proj_1NormBall(v, r, tol=1e-5, kmax=1000):
     # Use t to find the projection
     ret = np.zeros(v.shape)
     for i in range(ret.shape[0]):
-        if v[i,0] >= t:
-            ret[i,0] = v[i,0] - t
-        elif v[i,0] <= -t:
-            ret[i,0] = v[i,0] + t
+        if v[i, 0] >= t:
+            ret[i, 0] = v[i, 0] - t
+        elif v[i, 0] <= -t:
+            ret[i, 0] = v[i, 0] + t
 
     return ret
 
@@ -380,26 +381,26 @@ def Proj_2NormBall(v, r):
 
 def Proj_InfNormBall(v, r):
     """Calculates the projection of v on the ball of radius r in the infinity-norm"""
-    return np.maximum(np.minimum(v,r),-r)
+    return np.maximum(np.minimum(v, r), -r)
 
 def Proj_EqualityAffine(C, d, v):
-    """Calculates the projection of b onto the affine subspace defined by Cx=D"""
+    """Calculates the projection of b onto the affine subspace defined by Cx = d"""
     # Calculate thin QR decomp of C.T
     Q, R = LA.qr(C.T)
 
     # Find theta s.t. R^T*R theta = d
     # R^T*R is upper triangular and square so we use
-    theta = LA.solve(np.matmul(R.T,R), d)
+    theta = LA.solve(np.matmul(R.T, R), d)
 
     # Find x0 as C^T*theta
-    x0 = np.matmul(C.T,theta)
+    x0 = np.matmul(C.T, theta)
 
     # return the proj: x0 + v - Q*Q^T*v
-    return x0 + v - np.matmul(np.matmul(Q, Q.T),v)
+    return x0 + v - np.matmul(np.matmul(Q, Q.T), v)
 
 def Proj_InequalityAffine(A, b, v):
     """Calculates the projection of b onto the affine subspace defined by Ax >= b"""
-    if all(np.matmul(A,v) - b >= 0):
+    if all(np.matmul(A, v) - b >= 0):
         return v
     return Proj_EqualityAffine(A, b, v)
 
@@ -410,7 +411,7 @@ def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
 
     Input Arguments:
     v           -- vector to project
-    projs       -- tuple of callables, each projs[i] accepts one argument v, and projects it into S_i
+    projs       -- tuple of callables, projs[i] accepts one argument v, and projects it into S_i
     tol         -- Error tolerance for stopping condition
                    -- Proj complete when distance between projections is < tol
     kmax        -- Maximum steps allowed, used for stopping condition
@@ -436,15 +437,29 @@ def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
     # Now the Prox operator in the alternating method between the two
     proj = Proj_Intersection(v, (proj1, proj2)))
     """
+    for i, c in enumerate(projs):
+        if not callable(c):
+            raise InvalidArgumentError(f"gradf[{i}] is not a callable")
+
     x = v.copy()
     xold = None
     k = 0
     diff = 2*tol
+    print("-------------------------------------------------------")
+    # Loop until the projections converge
     while diff > tol and k < kmax:
-        y = proj1(x)
+        # Copy x to use for projections
+        y = x.copy()
+
+        # Run all the projections
+        for _, p in enumerate(projs):
+            y = p(y)
+            print(f"norm(y): {LA.norm(y)}")
+
         xold = x
-        x = proj2(y)
+        x = y
         diff = LA.norm(x - xold)
+        # print(f"Diff: {diff}; norm(x): {LA.norm(x)}")
         k += 1
 
     if k >= kmax:
@@ -630,32 +645,6 @@ def _test_ElasticNet(n):
         print(f"Time BB    (sec)     : {BB_time}")
         print("===========================================")
 
-def _test_Proj_EqualityAffine():
-    Q = np.eye(4)
-    c = np.array([[-2, 0, 0, -3]]).T
-    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
-    d = np.array([[7, 6]]).T
-
-    x0 = np.random.normal(size=(4, 1))
-    gradf = (lambda x: 2*x + c)
-    proxg = (lambda v, theta: Proj_EqualityAffine(C, d, v))
-    lamb = 0.2
-    tol = 1e-9
-    step_size = 1e-4
-    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T,x))
-
-    x_Iyer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
-
-    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
-    print("x:")
-    print(x)
-    print(f"k = {k}")
-    print(f"Cost of found solution: {cost(x)}")
-    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
-    print("Cx - d: ")
-    print(np.matmul(C,x)-d)
-    print("===========================================")
-
 def _test_Proj_1NormBall():
     r = 1
     v = np.array([[2, 3]]).T
@@ -667,7 +656,96 @@ def _test_Proj_1NormBall():
     print(proj)
     print("===========================================")
 
-def _test_Proj_Intersection():
+def _test_Prob1():
+    """
+    min x_1^2 + x_2^2 + x_3^2 + x_4^2 - 2x_1 - 3x_4
+    subj to:
+      2x_1 + x_2 +  x_3 + 4x_4 = 7
+       x_1 + x_2 + 2x_3 +  x_4 = 6
+    """
+
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    d = np.array([[7, 6]]).T
+
+    x0 = np.random.normal(size=(4, 1))
+    gradf = (lambda x: 2*x + c)
+    proxg = (lambda v, theta: Proj_EqualityAffine(C, d, v))
+    lamb = 0.2
+    tol = 1e-9
+    step_size = 1e-4
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_Iyer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
+    print("Cx - d: ")
+    print(np.matmul(C, x)-d)
+    print("===========================================")
+
+def _test_Prob2():
+    """
+    min x_1^2 + x_2^2 + x_3^2 + x_4^2 - 2x_1 - 3x_4
+    subj to:
+      2x_1 + x_2 +  x_3 + 4x_4 = 7
+       x_1 + x_2 + 2x_3 +  x_4 = 6
+                    norm_2(x) <= sqrt(2)
+    """
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    d = np.array([[7, 6]]).T
+
+    x0 = np.random.normal(size=(4, 1))
+    gradf = (lambda x: 2*x + c)
+
+    # Project onto 2-norm ball of radius sqrt(2)
+    proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(2)))
+
+    # Project onto affine Cx = d
+    proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-12))
+    # proxg = (lambda v, theta: Proj_Intersection(v, (proj2, proj1), tol=1e-8))
+
+    lamb = 0.005
+    tol = 1e-10
+    step_size = 1e-4
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_Iyer = np.array([[0.5016, 0.5441, 1.1308, 0.4166]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6)
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
+    print(f"Cx - d of found solution:")
+    print(np.matmul(C, x)-d)
+    print(f"Cx - d of Iyer solution:")
+    print(np.matmul(C, x_Iyer)-d)
+    print(f"2-norm of found solution: {LA.norm(x)}")
+    print(f"2-norm of Iyer's solution: {LA.norm(x_Iyer)}")
+    print("===========================================")
+
+def _test_Prob3():
+    """
+    min x_1^2 + x_2^2 + x_3^2 + x_4^2 - 2x_1 - 3x_4
+    subj to:
+      2x_1 + x_2 +  x_3 + 4x_4 <= 7
+       x_1 + x_2 + 2x_3 +  x_4 <= 6
+                    norm_2(x) <= sqrt(2)
+                      x_1, x_2 >= 0
+    """
     Q = np.eye(4)
     c = np.array([[-2, 0, 0, -3]]).T
     A = -1*np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
@@ -676,56 +754,48 @@ def _test_Proj_Intersection():
     x0 = np.random.normal(size=(4, 1))
     gradf = (lambda x: 2*x + c)
 
-    # Project onto 2-norm ball of radius 2
-    proj1 = (lambda v: Proj_2NormBall(v, 3))
+    # Project onto 2-norm ball of radius sqrt(2)
+    proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(2)))
+
+    # Project onto First Octant
+    proj2 = (lambda v: np.maximum(v, 0))
 
     # Project onto affine Ax >= b
-    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+    proj3 = (lambda v: Proj_InequalityAffine(A, b, v))
 
     # Now the Prox operator is the alternating method between the two
-    proxg = (lambda v, theta: Proj_Intersection(v, proj1, proj2, tol=1e-6))
+    proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2, proj3), tol=1e-6))
 
     lamb = 0.005
     tol = 1e-6
-    step_size = .25
+    step_size = 1e-2
     # Use the cost function as the stopping criteria
     cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
 
-    x_Iyer = np.array([[0.5016, 0.5441, 1.1308, 0.4166]]).T
-    # x_Iyer = np.array([[]])
-    x_BSF = np.array([[0.74829533], [0.08294718], [0.02306962], [1.282799]])
+    x_Iyer = np.array([[0.7827, 0.0, 0.0, 1.1741]]).T
 
     x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6)
     print("x:")
     print(x)
     print(f"k = {k}")
     print(f"Cost of found solution: {cost(x)}")
-    # print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
-    # print(f"Cost of Best Solution Found: {cost(x_BSF)}")
+    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
     print(f"Ax - b of found solution:")
     print(np.matmul(A, x)-b)
-    # print(f"Ax - b of Iyer solution:")
-    # print(np.matmul(A, x_Iyer)-b)
-    # print(f"Ax - b of Best Solution Found:")
-    # print(np.matmul(A, x_BSF)-b)
+    print(f"Ax - b of Iyer solution:")
+    print(np.matmul(A, x_Iyer)-b)
     print(f"2-norm of found solution: {LA.norm(x)}")
-    # print(f"2-norm of Iyer's solution: {LA.norm(x_Iyer)}")
-    # print(f"2-norm of Best Solution Found: {LA.norm(x_BSF)}")
+    print(f"2-norm of Iyer's solution: {LA.norm(x_Iyer)}")
     print("===========================================")
 
-def _test_Proj_Intersection2():
-    # c = np.array([[-2, 0, 0, -3]]).T
-    # Q = np.eye(4)
-    # A = -1*np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
-    # b = -1*np.array([[7, 6]]).T
+def _test_Prob4():
     Q = np.array([[2, 1], [1, 1]])
     c = np.array([[-10, -10]]).T
-    b = -1*np.array([[6]]).T
     A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
 
     x0 = np.random.normal(size=(2, 1))
-    gradf = (lambda x: 2*np.matmul(Q.T,x) + c)
-    # gradf = (lambda x: 2*x + c)
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
 
     # Project onto 2-norm ball of radius 2
     proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
@@ -733,11 +803,8 @@ def _test_Proj_Intersection2():
     # Project onto affine Ax >= b
     proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
 
-    # proj3 = (lambda v: np.maximum(v,0))
-
     # Now the Prox operator is the alternating method between the two
-    # proxg = (lambda v, theta: Proj_Intersection(v, proj1, proj3, proj2, tol=1e-6))
-    proxg = (lambda v, theta: Proj_Intersection(v, proj1, proj2, tol=1e-6))
+    proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
 
     lamb = 0.005
     tol = 1e-8
@@ -745,29 +812,47 @@ def _test_Proj_Intersection2():
     # Use the cost function as the stopping criteria
     cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
 
+    x_true = np.array([[1, 2]]).T
+
     x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6)
     print("x:")
     print(x)
     print(f"k = {k}")
     print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of true solution: {cost(x_true)}")
     print(f"Ax - b of found solution:")
     print(np.matmul(A, x)-b)
+    print(f"Ax - b of true solution:")
+    print(np.matmul(A, x_true)-b)
     print(f"2-norm of found solution: {LA.norm(x)}")
+    print(f"2-norm of true solution: {LA.norm(x_true)}")
     print("===========================================")
 
 if __name__ == "__main__":
     # _test_Lasso(5)
     # _test_RidgeRegression(5)
+
     # print("Elastic Net:")
     # print("===================================")
     # _test_ElasticNet(5)
-    # print("Projection onto Cx=d Affine Set:")
-    # print("===================================")
-    # _test_Proj_EqualityAffine()
+
     # print("Projection onto 1-Norm Ball:")
     # print("===================================")
     # _test_Proj_1NormBall()
-    print("Projection onto Intersection of 2-Norm Ball and Affine Set:")
+
+    # print("Problem 1: Projection onto Cx=d Affine Set:")
+    # print("===================================")
+    # _test_Prob1()
+
+    print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
     print("===================================")
-    _test_Proj_Intersection2()
+    _test_Prob2()
+
+    # print("Problem 3: Projection onto Ax >= b and 2-Norm Ball and Positive Xs:")
+    # print("===================================")
+    # _test_Prob3()
+
+    # print("Problem 4: Projection onto Ax >= b and 2-Norm Ball:")
+    # print("===================================")
+    # _test_Prob4()
     # print("Nothing here")
