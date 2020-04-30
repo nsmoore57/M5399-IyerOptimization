@@ -1,8 +1,8 @@
 #!/usr/bin/python
 """Module for Proximal Methods"""
+import warnings
 import numpy as np
 import numpy.linalg as LA
-import warnings
 
 # Define Exceptions
 class ProxWarning(UserWarning):
