@@ -846,6 +846,42 @@ def _test_Prob4():
     print(f"2-norm of true solution: {LA.norm(x_true)}")
     print("===========================================")
 
+def _test_Prob5():
+    """
+    min x_1 + x_2^2 + x_2*x_3 + 2x_3^2
+    subject to: (1/2)*norm2(x) = 1
+    """
+    Q = np.zeros((3,3),dtype=float)
+    Q[1,1] = 1.0
+    Q[1,2] = 0.5
+    Q[2,1] = 0.5
+    Q[2,2] = 2
+    c = np.array([[1, 0, 0]]).T
+
+    x0 = np.random.normal(size=(3, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Project onto 2-norm ball of radius sqrt(5)
+    proxg = (lambda v, theta: Proj_2NormBall(v, np.sqrt(2)))
+
+    lamb = 0.005
+    tol = 1e-9
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_true = np.array([[-np.sqrt(2), 0, 0]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="fista")
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of true solution: {cost(x_true)}")
+    print(f"2-norm of found solution: {LA.norm(x)}")
+    print(f"2-norm of true solution: {LA.norm(x_true)}")
+    print("===========================================")
+
 def _test_Nesterov_Accel_Prob1():
     """
     Using Nesterov Acceleration
@@ -1109,6 +1145,10 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_Prob4()
 
+    print("Problem 5: Projection onto Norm Circle:")
+    print("===================================")
+    _test_Prob5()
+
     # print("Nesterov Acceleration Problem 1: Projection onto Ax >= b:")
     # print("===================================")
     # _test_Nesterov_Accel_Prob1()
@@ -1125,9 +1165,9 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_FISTA_Accel_Prob2()
 
-    print("Comparision of Acceleration Methods:")
-    print("===================================")
-    _Prox_Accel_Comparison()
+    # print("Comparision of Acceleration Methods:")
+    # print("===================================")
+    # _Prox_Accel_Comparison()
 
 
 
