@@ -256,7 +256,8 @@ def ElasticNet(A, y, x0, lamb, alpha, tol, step_size=None, cost_or_pos="cost", k
 
     return ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax)
 
-def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000, accel=None, accel_args=None):
+def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000,
+                   accel=None, accel_args=None):
     """
     Implement the general Proximal method to solve
     min f(x) + lamb*g(x)
@@ -305,7 +306,8 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000, ac
         raise InvalidArgumentError("Unknown acceleration method")
 
     if accel == "nesterov":
-        accel_coeff = (1 - np.sqrt(accel_args[0]/accel_args[1]))/(1 + np.sqrt(accel_args[0]/accel_args[1]))
+        accel_coeff = (1-np.sqrt(accel_args[0]/accel_args[1]))/ \
+                      (1+np.sqrt(accel_args[0]/accel_args[1]))
 
     # Put these far enough apart to make sure the tolerance is exceeded
     xnew = x0 + 2*tol
@@ -372,7 +374,8 @@ def Proj_1NormBall(v, r, tol=1e-5, kmax=1000):
         if diff == 0:
             # We're done
             break
-        elif diff > 0:
+
+        if diff > 0:
             tmin = t
         else:
             tmax = t
@@ -851,11 +854,11 @@ def _test_Prob5():
     min x_1 + x_2^2 + x_2*x_3 + 2x_3^2
     subject to: (1/2)*norm2(x) = 1
     """
-    Q = np.zeros((3,3),dtype=float)
-    Q[1,1] = 1.0
-    Q[1,2] = 0.5
-    Q[2,1] = 0.5
-    Q[2,2] = 2
+    Q = np.zeros((3, 3), dtype=float)
+    Q[1, 1] = 1.0
+    Q[1, 2] = 0.5
+    Q[2, 1] = 0.5
+    Q[2, 2] = 2
     c = np.array([[1, 0, 0]]).T
 
     x0 = np.random.normal(size=(3, 1))
@@ -911,7 +914,8 @@ def _test_Nesterov_Accel_Prob1():
 
     x_true = np.array([[0, 5]]).T
 
-    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="nesterov", accel_args=accel_args)
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6,
+                          accel="nesterov", accel_args=accel_args)
     print("x:")
     print(x)
     print(f"k = {k}")
@@ -959,7 +963,8 @@ def _test_Nesterov_Accel_Prob2():
 
     x_true = np.array([[1, 2]]).T
 
-    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="nesterov", accel_args=accel_args)
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6,
+                          accel="nesterov", accel_args=accel_args)
     print("x:")
     print(x)
     print(f"k = {k}")
@@ -1093,17 +1098,20 @@ def _Prox_Accel_Comparison():
     accel_args = (min(eigs), max(eigs))
 
     start = time.time()
-    _, k_unaccel = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel=None)
+    _, k_unaccel = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6,
+                                  accel=None)
     end = time.time()
     time_unaccel = end - start
 
     start = time.time()
-    _, k_nesterov = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="nesterov", accel_args=accel_args)
+    _, k_nesterov = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6,
+                                   accel="nesterov", accel_args=accel_args)
     end = time.time()
     time_nesterov = end - start
 
     start = time.time()
-    _, k_fista = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="fista")
+    _, k_fista = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6,
+                                accel="fista")
     end = time.time()
     time_fista = end - start
 
@@ -1145,9 +1153,9 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_Prob4()
 
-    print("Problem 5: Projection onto Norm Circle:")
-    print("===================================")
-    _test_Prob5()
+    # print("Problem 5: Projection onto Norm Circle:")
+    # print("===================================")
+    # _test_Prob5()
 
     # print("Nesterov Acceleration Problem 1: Projection onto Ax >= b:")
     # print("===================================")
@@ -1165,9 +1173,9 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_FISTA_Accel_Prob2()
 
-    # print("Comparision of Acceleration Methods:")
-    # print("===================================")
-    # _Prox_Accel_Comparison()
+    print("Comparision of Acceleration Methods:")
+    print("===================================")
+    _Prox_Accel_Comparison()
 
 
 
