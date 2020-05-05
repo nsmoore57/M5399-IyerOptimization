@@ -1020,6 +1020,67 @@ def _test_FISTA_Accel_Prob2():
     print(f"2-norm of true solution: {LA.norm(x_true)}")
     print("===========================================")
 
+def _Prox_Accel_Comparison():
+    """
+    Using FISTA Acceleration
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+                norm2(x) <= sqrt(5)
+    """
+    import time
+
+    Q = np.array([[2, 1], [1, 1]])
+    c = np.array([[-10, -10]]).T
+    A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
+
+    x0 = np.random.normal(size=(2, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Project onto 2-norm ball of radius 2
+    proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
+
+    # Project onto affine Ax >= b
+    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
+
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    # Set up the acceleration
+    eigs = LA.eigvalsh(Q)
+    accel_args = (min(eigs), max(eigs))
+
+    start = time.time()
+    _, k_unaccel = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel=None)
+    end = time.time()
+    time_unaccel = end - start
+
+    start = time.time()
+    _, k_nesterov = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="nesterov", accel_args=accel_args)
+    end = time.time()
+    time_nesterov = end - start
+
+    start = time.time()
+    _, k_fista = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="fista")
+    end = time.time()
+    time_fista = end - start
+
+    print("These methods have already been tested for accuracy.")
+    print("We just compare iteration counts and timings")
+    print(f"k (no accel)    = {k_unaccel}")
+    print(f"k (nesterov)    = {k_nesterov}")
+    print(f"k (FISTA)       = {k_fista}")
+    print(f"time (no accel) = {time_unaccel} ")
+    print(f"time (nesterov) = {time_nesterov}")
+    print(f"time (FISTA)    = {time_fista}")
+    print("===========================================")
+
 if __name__ == "__main__":
     # _test_Lasso(5)
     # _test_RidgeRegression(5)
@@ -1044,9 +1105,9 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_Prob3()
 
-    print("Problem 4: Projection onto Ax >= b and 2-Norm Ball:")
-    print("===================================")
-    _test_Prob4()
+    # print("Problem 4: Projection onto Ax >= b and 2-Norm Ball:")
+    # print("===================================")
+    # _test_Prob4()
 
     # print("Nesterov Acceleration Problem 1: Projection onto Ax >= b:")
     # print("===================================")
@@ -1063,6 +1124,13 @@ if __name__ == "__main__":
     # print("FISTA Acceleration Problem 2: Projection onto Ax >= b and 2-Norm Ball:")
     # print("===================================")
     # _test_FISTA_Accel_Prob2()
+
+    print("Comparision of Acceleration Methods:")
+    print("===================================")
+    _Prox_Accel_Comparison()
+
+
+
 
 
     # print("Nothing here")
