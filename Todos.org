@@ -1,15 +1,10 @@
-* TODO Nesterov Acceleration for Prox
-- Get min and max eigenvalues from Q matrix in quadratic x.TQx + c.T problems. 
-- Could make it an option to the Prox Method or a new method - should probably be included in Prox function
-- Email from Iyer about other acceleration method
-
 * TODO Fix all Linear Algebra Functions - can see Iyer's code
 
 * TODO Need test functions for lots of Prox functions - Prox ops and proj functions
 
 * TODO One more problem from Iyer to code up for Prox too
-
+  
 * TODO Readme describing the library, possibly uses, example problems, etc
-
-* TODO Maybe change to use 1D vectors where appropriate - good exercise for actuality learning some numpy
+  
+* TODO Maybe change to use 1D vectors where appropriate - good exercise for actually learning some numpy
 

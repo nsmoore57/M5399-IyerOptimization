@@ -3,11 +3,11 @@
 
 import numpy as np
 import numpy.linalg as LA
-from Proximal import Lasso, RidgeRegression, ElasticNet
+import Proximal as Prox
 from Newton import GradDescent_BB
 
 def test_Lasso():
-    """Tests the Prox.Lasso Method"""
+    """Tests the Prox.Lasso Function"""
 
     for i in range(10):
         # Select random matrix size
@@ -27,7 +27,7 @@ def test_Lasso():
         cost_or_pos = "cost" if i < 5 else "pos"
 
         # Run LASSO
-        x_Lasso, _ = Lasso(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
+        x_Lasso, _ = Prox.Lasso(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
         print("x_Lasso = ", x_Lasso)
 
         # Now we need code to check our results, we'll use GradDescent_BB
@@ -49,7 +49,7 @@ def test_Lasso():
         assert Lasso_cost < BB_cost or abs(Lasso_cost - BB_cost)/BB_cost < 0.03
 
 def test_RidgeRegression():
-    """Tests the Prox.RidgeRegression Method"""
+    """Tests the Prox.RidgeRegression Function"""
 
     for i in range(10):
         # Select random matrix size
@@ -69,7 +69,7 @@ def test_RidgeRegression():
         cost_or_pos = "cost" if i < 5 else "pos"
 
         # Run RidgeRegression
-        x_RR, _ = RidgeRegression(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
+        x_RR, _ = Prox.RidgeRegression(A, y, x0, lamb, tol, cost_or_pos=cost_or_pos)
 
         # Now we need code to check our results, we'll use GradDescent_BB
         Q = np.matmul(A.T, A) + lamb*np.eye(A.shape[1])
@@ -108,7 +108,7 @@ def test_ElasticNet():
         cost_or_pos = "cost" if i < 5 else "pos"
 
         # Run ElasticNet
-        x_EN, _ = ElasticNet(A, y, x0, lamb, alpha, tol, cost_or_pos=cost_or_pos)
+        x_EN, _ = Prox.ElasticNet(A, y, x0, lamb, alpha, tol, cost_or_pos=cost_or_pos)
 
         # Now we need code to check our results, we'll use GradDescent_BB
         Atilde = np.hstack((A, -A))
@@ -133,3 +133,157 @@ def test_ElasticNet():
                 + ((1-alpha)/2)*LA.norm(x_BB)**2)
         # Relative Error to BB optimum
         assert EN_cost < BB_cost or abs(EN_cost - BB_cost)/BB_cost < 0.03
+
+def test_Prox_Prob1():
+    """
+    Tests Prox on Projection to Affine Cx=d
+    min x_1^2 + x_2^2 + x_3^2 + x_4^2 - 2x_1 - 3x_4
+    subj to:
+      2x_1 + x_2 +  x_3 + 4x_4 = 7
+       x_1 + x_2 + 2x_3 +  x_4 = 6
+    """
+
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    d = np.array([[7, 6]]).T
+
+    x0 = np.random.normal(size=(4, 1))
+    gradf = (lambda x: 2*x + c)
+    proxg = (lambda v, theta: Prox.Proj_EqualityAffine(C, d, v))
+    lamb = 0.2
+    tol = 1e-9
+    step_size = 1e-4
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_Iyer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
+
+    x, _ = Prox.ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost)
+    assert all(np.matmul(C, x) - d > -1e-8)
+    assert cost(x_Iyer) >= cost(x)
+
+def test_Prox_Prob2():
+    """
+    Tests Prox on Projection to intersection of Affine Ax >= b, 2norm ball, and octant
+    min x_1^2 + x_2^2 + x_3^2 + x_4^2 - 2x_1 - 3x_4
+    subj to:
+      2x_1 + x_2 +  x_3 + 4x_4 <= 7
+       x_1 + x_2 + 2x_3 +  x_4 <= 6
+                    norm_2(x) <= sqrt(2)
+                      x_1, x_2 >= 0
+    """
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    A = -1*np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    b = -1*np.array([[7, 6]]).T
+
+    x0 = np.random.normal(size=(4, 1))
+    gradf = (lambda x: 2*x + c)
+
+    # Project onto 2-norm ball of radius sqrt(2)
+    proj1 = (lambda v: Prox.Proj_2NormBall(v, np.sqrt(2)))
+
+    # Project onto First Octant
+    proj2 = (lambda v: np.maximum(v, 0))
+
+    # Project onto affine Ax >= b
+    proj3 = (lambda v: Prox.Proj_InequalityAffine(A, b, v))
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Prox.Proj_Intersection(v, (proj1, proj2, proj3), tol=1e-6))
+
+    lamb = 0.005
+    tol = 1e-6
+    step_size = 1e-2
+
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    # Not actual truth - but known to be close
+    x_true = np.array([[0.78436313], [0.00264116], [0.00277106], [1.17675819]])
+
+    x, _ = Prox.ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6)
+    assert all(np.matmul(A, x) - b > 0)
+    assert LA.norm(x) < np.sqrt(2) + 1e-5
+    assert min(x) > -1e-4
+    assert abs(cost(x) - cost(x_true)) < 1e-4
+
+def test_Nesterov_Accel_Prox():
+    """
+    Using Nesterov Acceleration
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+                norm2(x) <= sqrt(5)
+    """
+    Q = np.array([[2, 1], [1, 1]])
+    c = np.array([[-10, -10]]).T
+    A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
+
+    x0 = np.random.normal(size=(2, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Project onto 2-norm ball of radius 2
+    proj1 = (lambda v: Prox.Proj_2NormBall(v, np.sqrt(5)))
+
+    # Project onto affine Ax >= b
+    proj2 = (lambda v: Prox.Proj_InequalityAffine(A, b, v))
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Prox.Proj_Intersection(v, (proj1, proj2), tol=1e-6))
+
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    # Set up the acceleration
+    eigs = LA.eigvalsh(Q)
+    accel_args = (min(eigs), max(eigs))
+
+    x_true = np.array([[1, 2]]).T
+
+    x, k = Prox.ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6,
+                               accel="nesterov", accel_args=accel_args)
+    assert all(np.matmul(A,x) - b > -1e-8)
+    assert LA.norm(x) < np.sqrt(5) + 1e-6
+    assert abs(cost(x) - cost(x_true)) < 1e-3
+
+
+def test_FISTA_Accel():
+    """
+    Using FISTA Acceleration
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+                norm2(x) <= sqrt(5)
+    """
+    Q = np.array([[2, 1], [1, 1]])
+    c = np.array([[-10, -10]]).T
+    A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
+
+    x0 = np.random.normal(size=(2, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Project onto 2-norm ball of radius 2
+    proj1 = (lambda v: Prox.Proj_2NormBall(v, np.sqrt(5)))
+
+    # Project onto affine Ax >= b
+    proj2 = (lambda v: Prox.Proj_InequalityAffine(A, b, v))
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Prox.Proj_Intersection(v, (proj1, proj2), tol=1e-6))
+
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_true = np.array([[1, 2]]).T
+
+    x, k = Prox.ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="fista")
+    assert all(np.matmul(A,x) - b > -1e-8)
+    assert LA.norm(x) < np.sqrt(5) + 1e-6
+    assert abs(cost(x) - cost(x_true)) < 1e-3

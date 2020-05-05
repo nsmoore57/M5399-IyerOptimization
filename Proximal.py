@@ -256,7 +256,7 @@ def ElasticNet(A, y, x0, lamb, alpha, tol, step_size=None, cost_or_pos="cost", k
 
     return ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax)
 
-def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
+def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000, accel=None, accel_args=None):
     """
     Implement the general Proximal method to solve
     min f(x) + lamb*g(x)
@@ -274,6 +274,9 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
                    - Takes 1 argument - the position
                    Function returns when norm(cost_k - cost_{k+1}) < tol
     kmax        -- Maximum steps allowed, used for stopping condition
+    accel       -- None, "nesterov", or "fista"
+    accel_args  -- If using nesterov acceleration - accel[0] = m, and accel[1] = L
+                   - ignored if accel != "nesterov"
 
     Returns:
     If the optimal is found within tolerance
@@ -297,6 +300,13 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
     if not callable(cost):
         raise InvalidArgumentError("cost is not a callable")
 
+    # Check the acceleration for valid params
+    if accel not in (None, "nesterov", "fista"):
+        raise InvalidArgumentError("Unknown acceleration method")
+
+    if accel == "nesterov":
+        accel_coeff = (1 - np.sqrt(accel_args[0]/accel_args[1]))/(1 + np.sqrt(accel_args[0]/accel_args[1]))
+
     # Put these far enough apart to make sure the tolerance is exceeded
     xnew = x0 + 2*tol
     xold = x0
@@ -307,7 +317,15 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000):
     cost_old = cost_curr + 2*tol
 
     while LA.norm(cost_old - cost_curr) > tol and k < kmax:
-        xold = xnew
+        if accel is None or k == 1:
+            xold = xnew
+        elif accel == "nesterov":
+            xold = xnew + accel_coeff*(xnew - xold)
+        elif accel == "fista":
+            xold = xnew + (k - 2)/(k + 1)*(xnew - xold)
+        else:
+            raise InvalidArgumentError("Only nesterov and fista accelerations are supported")
+
         yk = xold - step_size*gradf(xold)
         xnew = proxg(yk, lamb*step_size)
 
@@ -445,21 +463,16 @@ def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
     xold = None
     k = 0
     diff = 2*tol
-    print("-------------------------------------------------------")
     # Loop until the projections converge
     while diff > tol and k < kmax:
         # Copy x to use for projections
-        y = x.copy()
+        xold = x.copy()
 
         # Run all the projections
         for _, p in enumerate(projs):
-            y = p(y)
-            print(f"norm(y): {LA.norm(y)}")
+            x = p(x)
 
-        xold = x
-        x = y
         diff = LA.norm(x - xold)
-        # print(f"Diff: {diff}; norm(x): {LA.norm(x)}")
         k += 1
 
     if k >= kmax:
@@ -695,7 +708,7 @@ def _test_Prob2():
     subj to:
       2x_1 + x_2 +  x_3 + 4x_4 = 7
        x_1 + x_2 + 2x_3 +  x_4 = 6
-                    norm_2(x) <= sqrt(2)
+                    norm_2(x) <= 3
     """
     Q = np.eye(4)
     c = np.array([[-2, 0, 0, -3]]).T
@@ -705,8 +718,8 @@ def _test_Prob2():
     x0 = np.random.normal(size=(4, 1))
     gradf = (lambda x: 2*x + c)
 
-    # Project onto 2-norm ball of radius sqrt(2)
-    proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(2)))
+    # Project onto 2-norm ball of radius 3
+    proj1 = (lambda v: Proj_2NormBall(v, 3))
 
     # Project onto affine Cx = d
     proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
@@ -721,7 +734,7 @@ def _test_Prob2():
     # Use the cost function as the stopping criteria
     cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
 
-    x_Iyer = np.array([[0.5016, 0.5441, 1.1308, 0.4166]]).T
+    x_Iyer = np.array([[1.1234, 0.6506, 1.8288, 0.5684]]).T
 
     x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6)
     print("x:")
@@ -789,6 +802,11 @@ def _test_Prob3():
     print("===========================================")
 
 def _test_Prob4():
+    """
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+                norm2(x) <= sqrt(5)
+    """
     Q = np.array([[2, 1], [1, 1]])
     c = np.array([[-10, -10]]).T
     A = -1*np.array([[3, 1]])
@@ -797,7 +815,7 @@ def _test_Prob4():
     x0 = np.random.normal(size=(2, 1))
     gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
 
-    # Project onto 2-norm ball of radius 2
+    # Project onto 2-norm ball of radius sqrt(5)
     proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
 
     # Project onto affine Ax >= b
@@ -828,6 +846,180 @@ def _test_Prob4():
     print(f"2-norm of true solution: {LA.norm(x_true)}")
     print("===========================================")
 
+def _test_Nesterov_Accel_Prob1():
+    """
+    Using Nesterov Acceleration
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+    """
+    Q = np.array([[2, 1], [1, 1]])
+    c = np.array([[-10, -10]]).T
+    A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
+
+    x0 = np.random.normal(size=(2, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Prox is projection onto affine Ax >= b
+    proxg = (lambda v, theta: Proj_InequalityAffine(A, b, v))
+
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    # Set up the acceleration
+    eigs = LA.eigvalsh(Q)
+    accel_args = (min(eigs), max(eigs))
+
+    x_true = np.array([[0, 5]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="nesterov", accel_args=accel_args)
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of true solution: {cost(x_true)}")
+    print(f"Ax - b of found solution:")
+    print(np.matmul(A, x)-b)
+    print(f"Ax - b of true solution:")
+    print(np.matmul(A, x_true)-b)
+    print("===========================================")
+
+def _test_Nesterov_Accel_Prob2():
+    """
+    Using Nesterov Acceleration
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+                norm2(x) <= sqrt(5)
+    """
+    Q = np.array([[2, 1], [1, 1]])
+    c = np.array([[-10, -10]]).T
+    A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
+
+    x0 = np.random.normal(size=(2, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Project onto 2-norm ball of radius 2
+    proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
+
+    # Project onto affine Ax >= b
+    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
+
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    # Set up the acceleration
+    eigs = LA.eigvalsh(Q)
+    accel_args = (min(eigs), max(eigs))
+
+    x_true = np.array([[1, 2]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="nesterov", accel_args=accel_args)
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of true solution: {cost(x_true)}")
+    print(f"Ax - b of found solution:")
+    print(np.matmul(A, x)-b)
+    print(f"Ax - b of true solution:")
+    print(np.matmul(A, x_true)-b)
+    print(f"2-norm of found solution: {LA.norm(x)}")
+    print(f"2-norm of true solution: {LA.norm(x_true)}")
+    print("===========================================")
+
+def _test_FISTA_Accel_Prob1():
+    """
+    Using Nesterov Acceleration
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+    """
+    Q = np.array([[2, 1], [1, 1]])
+    c = np.array([[-10, -10]]).T
+    A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
+
+    x0 = np.random.normal(size=(2, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Prox is projection onto affine Ax >= b
+    proxg = (lambda v, theta: Proj_InequalityAffine(A, b, v))
+
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_true = np.array([[0, 5]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="fista")
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of true solution: {cost(x_true)}")
+    print(f"Ax - b of found solution:")
+    print(np.matmul(A, x)-b)
+    print(f"Ax - b of true solution:")
+    print(np.matmul(A, x_true)-b)
+    print("===========================================")
+
+def _test_FISTA_Accel_Prob2():
+    """
+    Using FISTA Acceleration
+    min x_1^2 + (x_1 + x_2)^2 - 10(x_1 + x_2)
+    subject to: 3x_1 + x_2 <= 6
+                norm2(x) <= sqrt(5)
+    """
+    Q = np.array([[2, 1], [1, 1]])
+    c = np.array([[-10, -10]]).T
+    A = -1*np.array([[3, 1]])
+    b = -1*np.array([[6]]).T
+
+    x0 = np.random.normal(size=(2, 1))
+    gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
+
+    # Project onto 2-norm ball of radius 2
+    proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
+
+    # Project onto affine Ax >= b
+    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
+
+    lamb = 0.005
+    tol = 1e-8
+    step_size = 1e-5
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_true = np.array([[1, 2]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6, accel="fista")
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of true solution: {cost(x_true)}")
+    print(f"Ax - b of found solution:")
+    print(np.matmul(A, x)-b)
+    print(f"Ax - b of true solution:")
+    print(np.matmul(A, x_true)-b)
+    print(f"2-norm of found solution: {LA.norm(x)}")
+    print(f"2-norm of true solution: {LA.norm(x_true)}")
+    print("===========================================")
+
 if __name__ == "__main__":
     # _test_Lasso(5)
     # _test_RidgeRegression(5)
@@ -844,15 +1036,33 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_Prob1()
 
-    print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
-    print("===================================")
-    _test_Prob2()
+    # print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
+    # print("===================================")
+    # _test_Prob2()
 
     # print("Problem 3: Projection onto Ax >= b and 2-Norm Ball and Positive Xs:")
     # print("===================================")
     # _test_Prob3()
 
-    # print("Problem 4: Projection onto Ax >= b and 2-Norm Ball:")
+    print("Problem 4: Projection onto Ax >= b and 2-Norm Ball:")
+    print("===================================")
+    _test_Prob4()
+
+    # print("Nesterov Acceleration Problem 1: Projection onto Ax >= b:")
     # print("===================================")
-    # _test_Prob4()
+    # _test_Nesterov_Accel_Prob1()
+
+    # print("Nesterov Acceleration Problem 2: Projection onto Ax >= b and 2-Norm Ball:")
+    # print("===================================")
+    # _test_Nesterov_Accel_Prob2()
+
+    # print("FISTA Acceleration Problem 1: Projection onto Ax >= b:")
+    # print("===================================")
+    # _test_FISTA_Accel_Prob1()
+
+    # print("FISTA Acceleration Problem 2: Projection onto Ax >= b and 2-Norm Ball:")
+    # print("===================================")
+    # _test_FISTA_Accel_Prob2()
+
+
     # print("Nothing here")
