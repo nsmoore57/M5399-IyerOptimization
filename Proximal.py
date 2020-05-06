@@ -420,7 +420,7 @@ def Get_Proj_EqualityAffine_Func(C, d):
     QQT = np.matmul(Q, Q.T)
 
     # return the proj: x0 + v - Q*Q^T*v
-    return (lambda v: x0 + v - np.matmul(QQT,v))
+    return lambda v: x0 + v - np.matmul(QQT, v)
 
 def Get_Proj_InequalityAffine_Func(A, b):
     """Returns a function which will project b onto the affine subspace defined by Ax >= b"""
