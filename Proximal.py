@@ -465,21 +465,27 @@ def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
     x = v.copy()
     xold = None
     k = 0
-    diff = 2*tol
+    iter_diff = 2*tol
+    proj_diff = 2*tol
     # Loop until the projections converge
-    while diff > tol and k < kmax:
+    while proj_diff > tol and iter_diff > tol and k < kmax:
         # Copy x to use for projections
         xold = x.copy()
 
+        prof_diff = 0
         # Run all the projections
-        for _, p in enumerate(projs):
-            x = p(x)
+        for _, proj in enumerate(projs):
+            y = proj(x)
+            proj_diff = max(proj_diff,LA.norm(y-x))
+            x = y
 
-        diff = LA.norm(x - xold)
+        iter_diff = LA.norm(x - xold)
         k += 1
 
     if k >= kmax:
-        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
+        warnings.warn("kmax exceeded in Proj_Intersection, consider raising it", NonConvergenceWarning)
+    if proj_diff > 10*iter_diff:
+        warnings.warn("May be trying to find the intersection of disjoint sets.", NonConvergenceWarning)
 
     return x
 
@@ -1141,9 +1147,9 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_Prob1()
 
-    # print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
-    # print("===================================")
-    # _test_Prob2()
+    print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
+    print("===================================")
+    _test_Prob2()
 
     # print("Problem 3: Projection onto Ax >= b and 2-Norm Ball and Positive Xs:")
     # print("===================================")
