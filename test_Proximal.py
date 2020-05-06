@@ -150,7 +150,8 @@ def test_Prox_Prob1():
 
     x0 = np.random.normal(size=(4, 1))
     gradf = (lambda x: 2*x + c)
-    proxg = (lambda v, theta: Prox.Proj_EqualityAffine(C, d, v))
+    proj = Prox.Get_Proj_EqualityAffine_Func(C, d)
+    proxg = (lambda v, theta: proj(v))
     lamb = 0.2
     tol = 1e-9
     step_size = 1e-4
@@ -187,7 +188,7 @@ def test_Prox_Prob2():
     proj2 = (lambda v: np.maximum(v, 0))
 
     # Project onto affine Ax >= b
-    proj3 = (lambda v: Prox.Proj_InequalityAffine(A, b, v))
+    proj3 = Prox.Get_Proj_InequalityAffine_Func(A, b)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Prox.Proj_Intersection(v, (proj1, proj2, proj3), tol=1e-6))
@@ -227,7 +228,7 @@ def test_Nesterov_Accel_Prox():
     proj1 = (lambda v: Prox.Proj_2NormBall(v, np.sqrt(5)))
 
     # Project onto affine Ax >= b
-    proj2 = (lambda v: Prox.Proj_InequalityAffine(A, b, v))
+    proj2 = Prox.Get_Proj_InequalityAffine_Func(A, b)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Prox.Proj_Intersection(v, (proj1, proj2), tol=1e-6))
@@ -270,7 +271,7 @@ def test_FISTA_Accel():
     proj1 = (lambda v: Prox.Proj_2NormBall(v, np.sqrt(5)))
 
     # Project onto affine Ax >= b
-    proj2 = (lambda v: Prox.Proj_InequalityAffine(A, b, v))
+    proj2 = Prox.Get_Proj_InequalityAffine_Func(A, b)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Prox.Proj_Intersection(v, (proj1, proj2), tol=1e-6))

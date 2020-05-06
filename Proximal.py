@@ -786,7 +786,6 @@ def _test_Prob3():
 
     # Project onto affine Ax >= b
     proj3 = Get_Proj_InequalityAffine_Func(A, b)
-    print("Prob3 proj3 = ", proj3)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2, proj3), tol=1e-6))
