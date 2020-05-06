@@ -788,7 +788,7 @@ def _test_Prob2_Disjoint_Sets():
     proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(2)))
 
     # Project onto affine Cx = d
-    proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
+    proj2 = Get_Proj_EqualityAffine_Func(C, d)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-12))
