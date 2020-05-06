@@ -472,21 +472,27 @@ def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
     x = v.copy()
     xold = None
     k = 0
-    diff = 2*tol
+    iter_diff = 2*tol
+    proj_diff = 2*tol
     # Loop until the projections converge
-    while diff > tol and k < kmax:
+    while max(proj_diff, iter_diff) > tol and k < kmax:
         # Copy x to use for projections
         xold = x.copy()
 
+        proj_diff = 0
         # Run all the projections
-        for _, p in enumerate(projs):
-            x = p(x)
+        for _, proj in enumerate(projs):
+            y = proj(x)
+            proj_diff = max(proj_diff, LA.norm(y-x))
+            x = y
 
-        diff = LA.norm(x - xold)
+        iter_diff = LA.norm(x - xold)
         k += 1
 
     if k >= kmax:
-        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
+        warnings.warn("kmax exceeded in Proj_Intersection." + \
+                       " Could be that kmax needs to be raised or" + \
+                      " that the sets are disjoint.", NonConvergenceWarning)
 
     return x
 
@@ -734,6 +740,55 @@ def _test_Prob2():
 
     # Project onto affine Cx = d
     proj2 = Get_Proj_EqualityAffine_Func(C, d)
+
+    # Now the Prox operator is the alternating method between the two
+    proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-12))
+    # proxg = (lambda v, theta: Proj_Intersection(v, (proj2, proj1), tol=1e-8))
+
+    lamb = 0.005
+    tol = 1e-10
+    step_size = 1e-4
+    # Use the cost function as the stopping criteria
+    cost = (lambda x: np.matmul(x.T, np.matmul(Q, x)) + np.matmul(c.T, x))
+
+    x_Iyer = np.array([[1.1234, 0.6506, 1.8288, 0.5684]]).T
+
+    x, k = ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=1e6)
+    print("x:")
+    print(x)
+    print(f"k = {k}")
+    print(f"Cost of found solution: {cost(x)}")
+    print(f"Cost of Iyer's solution: {cost(x_Iyer)}")
+    print(f"Cx - d of found solution:")
+    print(np.matmul(C, x)-d)
+    print(f"Cx - d of Iyer solution:")
+    print(np.matmul(C, x_Iyer)-d)
+    print(f"2-norm of found solution: {LA.norm(x)}")
+    print(f"2-norm of Iyer's solution: {LA.norm(x_Iyer)}")
+    print("===========================================")
+
+def _test_Prob2_Disjoint_Sets():
+    """
+    min x_1^2 + x_2^2 + x_3^2 + x_4^2 - 2x_1 - 3x_4
+    subj to:
+      2x_1 + x_2 +  x_3 + 4x_4 = 7
+       x_1 + x_2 + 2x_3 +  x_4 = 6
+                    norm_2(x) <= sqrt(2)
+    Should give a warning since the constraint sets are disjoint
+    """
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    C = np.array([[2, 1, 1, 4], [1, 1, 2, 1]])
+    d = np.array([[7, 6]]).T
+
+    x0 = np.random.normal(size=(4, 1))
+    gradf = (lambda x: 2*x + c)
+
+    # Project onto 2-norm ball of radius 3
+    proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(2)))
+
+    # Project onto affine Cx = d
+    proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-12))
@@ -1155,6 +1210,12 @@ if __name__ == "__main__":
     # print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
     # print("===================================")
     # _test_Prob2()
+
+    # print("Problem 2 - Disjoint Sets: should give warning")
+    # print("Projection onto Disjoint Cx=d Affine Set and 2-Norm Ball:")
+    # print("===================================")
+    # _test_Prob2_Disjoint_Sets()
+
     # print("Problem 3: Projection onto Ax >= b and 2-Norm Ball and Positive Xs:")
     # print("===================================")
     # _test_Prob3()
