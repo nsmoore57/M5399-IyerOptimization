@@ -404,8 +404,8 @@ def Proj_InfNormBall(v, r):
     """Calculates the projection of v on the ball of radius r in the infinity-norm"""
     return np.maximum(np.minimum(v, r), -r)
 
-def Proj_EqualityAffine(C, d, v):
-    """Calculates the projection of b onto the affine subspace defined by Cx = d"""
+def Get_Proj_EqualityAffine_Func(C, d):
+    """Returns a function which will project b onto the affine subspace defined by Cx = d"""
     # Calculate thin QR decomp of C.T
     Q, R = LA.qr(C.T)
 
@@ -416,14 +416,20 @@ def Proj_EqualityAffine(C, d, v):
     # Find x0 as C^T*theta
     x0 = np.matmul(C.T, theta)
 
-    # return the proj: x0 + v - Q*Q^T*v
-    return x0 + v - np.matmul(np.matmul(Q, Q.T), v)
+    # Cache Q*Q.T
+    QQT = np.matmul(Q, Q.T)
 
-def Proj_InequalityAffine(A, b, v):
-    """Calculates the projection of b onto the affine subspace defined by Ax >= b"""
-    if all(np.matmul(A, v) - b >= 0):
-        return v
-    return Proj_EqualityAffine(A, b, v)
+    # return the proj: x0 + v - Q*Q^T*v
+    return (lambda v: x0 + v - np.matmul(QQT,v))
+
+def Get_Proj_InequalityAffine_Func(A, b):
+    """Returns a function which will project b onto the affine subspace defined by Ax >= b"""
+    eqAffine = Get_Proj_EqualityAffine_Func(A, b)
+    def Proj_InequalityAffine(v):
+        if all(np.matmul(A, v) - b >= 0):
+            return v
+        return eqAffine(v)
+    return Proj_InequalityAffine
 
 def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
     """
@@ -453,14 +459,15 @@ def Proj_Intersection(v, projs, tol=1e-7, kmax=1000):
     proj1 = (lambda v: Proj_2NormBall(v, 2))
 
     # Project onto affine Cx=d
-    proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
+    proj2 = Get_Proj_EqualityAffine_Func(C, d)
 
     # Now the Prox operator in the alternating method between the two
     proj = Proj_Intersection(v, (proj1, proj2)))
     """
     for i, c in enumerate(projs):
         if not callable(c):
-            raise InvalidArgumentError(f"gradf[{i}] is not a callable")
+            print(f"projs[{i}]: ", projs[i])
+            raise InvalidArgumentError(f"projs[{i}] is not a callable")
 
     x = v.copy()
     xold = None
@@ -687,7 +694,8 @@ def _test_Prob1():
 
     x0 = np.random.normal(size=(4, 1))
     gradf = (lambda x: 2*x + c)
-    proxg = (lambda v, theta: Proj_EqualityAffine(C, d, v))
+    proj = Get_Proj_EqualityAffine_Func(C, d)
+    proxg = (lambda v, theta: proj(v))
     lamb = 0.2
     tol = 1e-9
     step_size = 1e-4
@@ -725,7 +733,7 @@ def _test_Prob2():
     proj1 = (lambda v: Proj_2NormBall(v, 3))
 
     # Project onto affine Cx = d
-    proj2 = (lambda v: Proj_EqualityAffine(C, d, v))
+    proj2 = Get_Proj_EqualityAffine_Func(C, d)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-12))
@@ -777,7 +785,8 @@ def _test_Prob3():
     proj2 = (lambda v: np.maximum(v, 0))
 
     # Project onto affine Ax >= b
-    proj3 = (lambda v: Proj_InequalityAffine(A, b, v))
+    proj3 = Get_Proj_InequalityAffine_Func(A, b)
+    print("Prob3 proj3 = ", proj3)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2, proj3), tol=1e-6))
@@ -822,7 +831,7 @@ def _test_Prob4():
     proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
 
     # Project onto affine Ax >= b
-    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+    proj2 = Get_Proj_InequalityAffine_Func(A, b)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
@@ -900,7 +909,8 @@ def _test_Nesterov_Accel_Prob1():
     gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
 
     # Prox is projection onto affine Ax >= b
-    proxg = (lambda v, theta: Proj_InequalityAffine(A, b, v))
+    proj = Get_Proj_InequalityAffine_Func(A, b)
+    proxg = (lambda v, theta: proj(v))
 
     lamb = 0.005
     tol = 1e-8
@@ -946,7 +956,7 @@ def _test_Nesterov_Accel_Prob2():
     proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
 
     # Project onto affine Ax >= b
-    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+    proj2 = Get_Proj_InequalityAffine_Func(A, b)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
@@ -993,7 +1003,8 @@ def _test_FISTA_Accel_Prob1():
     gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
 
     # Prox is projection onto affine Ax >= b
-    proxg = (lambda v, theta: Proj_InequalityAffine(A, b, v))
+    proj = Get_Proj_InequalityAffine_Func(A, b)
+    proxg = (lambda v, theta: proj(v))
 
     lamb = 0.005
     tol = 1e-8
@@ -1034,7 +1045,7 @@ def _test_FISTA_Accel_Prob2():
     proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
 
     # Project onto affine Ax >= b
-    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+    proj2 = Get_Proj_InequalityAffine_Func(A, b)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
@@ -1075,6 +1086,7 @@ def _Prox_Accel_Comparison():
     A = -1*np.array([[3, 1]])
     b = -1*np.array([[6]]).T
 
+    np.random.seed(1)
     x0 = np.random.normal(size=(2, 1))
     gradf = (lambda x: 2*np.matmul(Q.T, x) + c)
 
@@ -1082,7 +1094,7 @@ def _Prox_Accel_Comparison():
     proj1 = (lambda v: Proj_2NormBall(v, np.sqrt(5)))
 
     # Project onto affine Ax >= b
-    proj2 = (lambda v: Proj_InequalityAffine(A, b, v))
+    proj2 = Get_Proj_InequalityAffine_Func(A, b)
 
     # Now the Prox operator is the alternating method between the two
     proxg = (lambda v, theta: Proj_Intersection(v, (proj1, proj2), tol=1e-6))
@@ -1144,7 +1156,6 @@ if __name__ == "__main__":
     # print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
     # print("===================================")
     # _test_Prob2()
-
     # print("Problem 3: Projection onto Ax >= b and 2-Norm Ball and Positive Xs:")
     # print("===================================")
     # _test_Prob3()
@@ -1173,9 +1184,9 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_FISTA_Accel_Prob2()
 
-    # print("Comparision of Acceleration Methods:")
-    # print("===================================")
-    # _Prox_Accel_Comparison()
+    print("Comparision of Acceleration Methods:")
+    print("===================================")
+    _Prox_Accel_Comparison()
 
 
 
