@@ -337,7 +337,7 @@ def ProximalMethod(x0, gradf, proxg, lamb, tol, step_size, cost, kmax=100000,
         k += 1
 
     if k >= kmax:
-        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
+        warnings.warn("kmax exceeded in ProximalMethod, consider raising it", NonConvergenceWarning)
 
     return xnew, k
 
@@ -384,7 +384,7 @@ def Proj_1NormBall(v, r, tol=1e-5, kmax=1000):
         k += 1
 
     if k >= kmax:
-        warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
+        warnings.warn("kmax exceeded in Proj_1NormBall, consider raising it", NonConvergenceWarning)
 
     # Use t to find the projection
     ret = np.zeros(v.shape)
@@ -1173,12 +1173,12 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_FISTA_Accel_Prob2()
 
-    print("Comparision of Acceleration Methods:")
-    print("===================================")
-    _Prox_Accel_Comparison()
+    # print("Comparision of Acceleration Methods:")
+    # print("===================================")
+    # _Prox_Accel_Comparison()
 
 
 
 
 
-    # print("Nothing here")
+    print("Nothing here")
