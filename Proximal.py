@@ -1203,53 +1203,47 @@ if __name__ == "__main__":
     # print("===================================")
     # _test_Proj_1NormBall()
 
-    # print("Problem 1: Projection onto Cx=d Affine Set:")
-    # print("===================================")
-    # _test_Prob1()
+    print("Problem 1: Projection onto Cx=d Affine Set:")
+    print("===================================")
+    _test_Prob1()
 
-    # print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
-    # print("===================================")
-    # _test_Prob2()
+    print("Problem 2: Projection onto Cx=d Affine Set and 2-Norm Ball:")
+    print("===================================")
+    _test_Prob2()
 
-    # print("Problem 2 - Disjoint Sets: should give warning")
-    # print("Projection onto Disjoint Cx=d Affine Set and 2-Norm Ball:")
-    # print("===================================")
-    # _test_Prob2_Disjoint_Sets()
+    print("Problem 2 - Disjoint Sets: should give warning")
+    print("Projection onto Disjoint Cx=d Affine Set and 2-Norm Ball:")
+    print("===================================")
+    _test_Prob2_Disjoint_Sets()
 
-    # print("Problem 3: Projection onto Ax >= b and 2-Norm Ball and Positive Xs:")
-    # print("===================================")
-    # _test_Prob3()
+    print("Problem 3: Projection onto Ax >= b and 2-Norm Ball and Positive Xs:")
+    print("===================================")
+    _test_Prob3()
 
-    # print("Problem 4: Projection onto Ax >= b and 2-Norm Ball:")
-    # print("===================================")
-    # _test_Prob4()
+    print("Problem 4: Projection onto Ax >= b and 2-Norm Ball:")
+    print("===================================")
+    _test_Prob4()
 
-    # print("Problem 5: Projection onto Norm Circle:")
-    # print("===================================")
-    # _test_Prob5()
+    print("Problem 5: Projection onto Norm Circle:")
+    print("===================================")
+    _test_Prob5()
 
-    # print("Nesterov Acceleration Problem 1: Projection onto Ax >= b:")
-    # print("===================================")
-    # _test_Nesterov_Accel_Prob1()
+    print("Nesterov Acceleration Problem 1: Projection onto Ax >= b:")
+    print("===================================")
+    _test_Nesterov_Accel_Prob1()
 
-    # print("Nesterov Acceleration Problem 2: Projection onto Ax >= b and 2-Norm Ball:")
-    # print("===================================")
-    # _test_Nesterov_Accel_Prob2()
+    print("Nesterov Acceleration Problem 2: Projection onto Ax >= b and 2-Norm Ball:")
+    print("===================================")
+    _test_Nesterov_Accel_Prob2()
 
-    # print("FISTA Acceleration Problem 1: Projection onto Ax >= b:")
-    # print("===================================")
-    # _test_FISTA_Accel_Prob1()
+    print("FISTA Acceleration Problem 1: Projection onto Ax >= b:")
+    print("===================================")
+    _test_FISTA_Accel_Prob1()
 
-    # print("FISTA Acceleration Problem 2: Projection onto Ax >= b and 2-Norm Ball:")
-    # print("===================================")
-    # _test_FISTA_Accel_Prob2()
+    print("FISTA Acceleration Problem 2: Projection onto Ax >= b and 2-Norm Ball:")
+    print("===================================")
+    _test_FISTA_Accel_Prob2()
 
     print("Comparision of Acceleration Methods:")
     print("===================================")
     _Prox_Accel_Comparison()
-
-
-
-
-
-    print("Nothing here")
