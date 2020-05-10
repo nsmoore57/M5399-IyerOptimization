@@ -93,7 +93,6 @@ def Barrier_EqualityOnly(Q, c, A, b, tol, kmax=1000, rho=.9, mu0=1e2, mumin=1e-9
 
 
     if np.count_nonzero(Q) != 0:
-        print("Running Phase 1")
         Q_p1 = np.eye(n)
         c_p1 = -1*np.ones((n, 1))
         x, lamb, s, k = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s,
@@ -120,7 +119,7 @@ def _DimensionsCompatible_EqualityOnly(Q, c, A, b):
     if b.shape[1] != 1: return False, "b msut be a column vector"
     return True, "No error"
 
-def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mumin):
+def _Barrier_Worker_EqualityOnly(Q, c, A, b, x0, lamb, s, tol, kmax, rho, mu0, mumin):
     """
     Worker method for the InteriorPointBarrier_EqualityOnly function
 
@@ -149,6 +148,7 @@ def _Barrier_Worker_EqualityOnly(Q, c, A, b, x, lamb, s, tol, kmax, rho, mu0, mu
     mu = mu0
 
     k = 1
+    x = x0.copy()
 
     # Cache frequently needed values
     r = -1*F(x, s, lamb)
@@ -335,7 +335,6 @@ def Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax=1000, rho=.9, mu0=1e2
 
     # Phase I - find a solution in the feasible region - if required
     if np.count_nonzero(Q) != 0:
-        print("Running Phase 1")
         Q_p1 = np.eye(n)
         c_p1 = -1*np.ones((n, 1))
         x, lamb, s, t, theta, k = _Barrier_Worker_EqualityInequality(Q_p1, c_p1, A, b, C, d, x,
@@ -565,7 +564,7 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     Warnings:
     Issuse a NonConvergenceError if the optimum cannot be found within tolerance
 
-    Example:
+    TODO: Not quite working correctly - don't know why, but check out Prob2 below
     """
     # Check if the dimensions of A and b are compatible
     compat, error = _DimensionsCompatible_EqualityOnly(Q, c, A, b)
@@ -584,7 +583,7 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     # To track the total number of iterations for both phases
     iters = [0, 0, 0]
 
-    x = np.ones((n, 1))
+    x0 = np.ones((n, 1))
     lamb = np.zeros((m, 1))
     s = np.ones((n, 1))
 
@@ -592,27 +591,25 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     # - Can use the Newton's Inexact Line Search for this
     Q_p1 = np.eye(n)
     c_p1 = -1*np.ones((n, 1))
-    x, lamb, s, iters[1] = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x, lamb, s,
+    x_feas, lamb, s, iters[1] = _Barrier_Worker_EqualityOnly(Q_p1, c_p1, A, b, x0, lamb, s,
                                                         tol[0], kmax[0], rho, mu0, mumin)
 
     # The above Phase one doesn't take Q or c into account, in particular with regards to lamb and s
     # Here so improve the point from Phase I for s and lamb
-    Qxc = np.matmul(Q, x) + c
+    Qxc = np.matmul(Q, x_feas) + c
     s = np.maximum(Qxc, 0) + 1e-4*np.ones(c.shape)
     lamb = myLA.lowRank_MinNormLS(A.T, -np.minimum(Qxc, 0) - 1e-4*np.ones(c.shape))
-
-    # print("Norm of residual from feasible point: ", LA.norm(np.matmul(A,x)-b))
 
     # Phase II
     Q_p2 = Q.copy()
     c_p2 = c.copy()
 
-    x, lamb, s, iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x, lamb, s, tol[1], kmax[1], mumin)
+    x_PD, lamb, s, iters[2] = _PD_Worker(Q_p2, c_p2, A, b, x_feas, lamb, s, tol[1], kmax[1], mumin)
 
     iters[0] = iters[1] + iters[2]
-    return x, iters
+    return x_PD, iters
 
-def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
+def _PD_Worker(Q, c, A, b, x0, lamb, s, tol, kmax, mumin):
     """
     Worker method for the Predictor_Corrector function
 
@@ -641,6 +638,7 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
     m, n = A.shape
 
     k = 1
+    x = x0.copy()
 
     # Cache frequently needed values
     r = -1*F(x, s, lamb)
@@ -705,6 +703,8 @@ def _PD_Worker(Q, c, A, b, x, lamb, s, tol, kmax, mumin):
         rx = r[:n]
         rlamb = r[n:n+m]
 
+        print(_PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q))
+
     if k > kmax and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
         warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
     if mu < mumin and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
@@ -738,82 +738,33 @@ def _PredCorr_AlphaBinarySearch(x, dx, tol=1e-2):
     # L is confirmed to be s.t. x + L*dx >= 0
     return L
 
-if __name__ == "__main__":
-    # To solve the following problem:
-    # min -10x_1 - 9x_2
-    # subj. to 7x_1 + 10x_2 <= 6300
-    #          3x_1 +  5x_2 <= 3600
-    #          3x_1 +  2x_2 <= 2124
-    #          2x_1 +  5x_2 <= 2700
-
-    # A = np.array([[-7, -10, -1, 0, 0, 0],
-    #               [-3, -5, 0, -1, 0, 0],
-    #               [-3, -2, 0, 0, -1, 0],
-    #               [-2, -5, 0, 0, 0, -1]])
-    # b = np.array([[-6300, -3600, -2124, -2700]]).T
-    # c = np.array([[-10, -9, 0, 0, 0, 0]]).T
-    # Q = np.zeros((6, 6))
-    # tol = 1e-5
-    # kmax = 10000
-    # rho = .9
-    # mu0 = 1e4
-    # mumin = 1e-8
-
-    # x, k = InteriorPointBarrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
-    # print("Found optimal : \n" + str(x[0:2]))
-    # print("Num Iterations: " + str(k))
-
-    # Solve the problem:
-    # min 2x_1 + 3x_2 + 6x_3
-    # subj. to x_1 -  x_2 +  x_3  = 2
-    #         2x_1 + 2x_2 - 3x_3  = 0
-    #          x_1 + 3x_2 + 2x_3 <= 3
-    #               -2x_2 +  x_3 <= 1
-    #              x_1, x_2, x_3 >= 0
-    # A = np.array([[-1, -3, -2], [0, 2, -1]])
-    # b = np.array([[-3, -1]]).T
-    # c = np.array([[2, 3, 6]]).T
-    # Q = np.zeros((3, 3))
-    # C = np.array([[1, -1, 1], [2, 2, -3]])
-    # d = np.array([[2, 0]]).T
-    # tol = 1e-8
-    # kmax = 10000
-    # rho = .9
-    # mu0 = 1e4
-    # mumin = 1e-9
-
-    # x, k = InteriorPointBarrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax, rho, mu0, mumin)
-    # print("Found Optimal : \n" + str(x))
-    # print("Num Iterations: " + str(k))
-    # true_answer = np.array([[1.208, 0.042, 0.833]]).T
-    # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
-    # print("Cost of found solution:" + str(np.matmul(c.T, x)))
-    # print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)))
-
+def _test_Prob1():
     # Solve the following problem using the predictor-corrector method:
-    # min -3x_1 + x_2 + 3x_3 - x_4
-    # subj. to  x_1 + 2x_2 -  x_3 +  x_4 = 0
-    #          2x_1 - 2x_2 + 3x_3 + 3x_4 = 9
-    #           x_1 -  x_2 + 2x_3 -  x_4 = 6
-    #           x_1, x_2, x_3, x_4 >= 0
-    # A = np.array([[1,  2, -1,  1],
-    #               [2, -2,  3,  3],
-    #               [1, -1,  2, -1]])
-    # b = np.array([[0, 9, 6]]).T
-    # Q = np.zeros((4, 4))
-    # c = np.array([[-3, 1, 3, -1]]).T
-    # tol = (1e0, 1e-9)
+    #      min -3x_1 +  x_2 + 3x_3 -  x_4
+    # subj. to   x_1 + 2x_2 -  x_3 +  x_4 = 0
+    #           2x_1 - 2x_2 + 3x_3 + 3x_4 = 9
+    #            x_1 -  x_2 + 2x_3 -  x_4 = 6
+    #                 x_1, x_2, x_3, x_4 >= 0
+    A = np.array([[1,  2, -1,  1],
+                  [2, -2,  3,  3],
+                  [1, -1,  2, -1]])
+    b = np.array([[0, 9, 6]]).T
+    Q = np.zeros((4, 4))
+    c = np.array([[-3, 1, 3, -1]]).T
+    tol = (1e0, 1e-9)
 
-    # x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-12)
-    # print("Found Optimal : \n" + str(x))
-    # print("Num Iterations: " + str(k))
-    # true_answer = np.array([[1, 1, 3, 0]]).T
-    # print("Norm of Error is: " + str(LA.norm(x - true_answer)))
-    # print("Cost of found solution:" + str(np.matmul(c.T, x)))
-    # print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)))
-    # print("Residual of found solution: ", LA.norm(np.matmul(A,x)-b))
-    # print("Residual of 'true' solution: ", LA.norm(np.matmul(A,true_answer)-b))
+    x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-12)
+    print("Found Optimal : \n" + str(x))
+    print("Num Iterations: " + str(k))
+    true_answer = np.array([[1, 1, 3, 0]]).T
+    print("Norm of Error is: " + str(LA.norm(x - true_answer)))
+    print("Cost of found solution:" + str(np.matmul(c.T, x)))
+    print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)))
+    print("Residual of found solution: ", LA.norm(np.matmul(A,x)-b))
+    print("Residual of 'true' solution: ", LA.norm(np.matmul(A,true_answer)-b))
+    print("===========================================")
 
+def _test_Prob2():
     # Solve the following problem using the predictor-corrector method:
     # min x_1 + 6x_2 - 7x_3 + x_4 + 5x_5
     # subj. to 5x_1 - 4x_2 + 13x_3 - 2x_4 + x_5 = 20
@@ -824,14 +775,128 @@ if __name__ == "__main__":
     b = np.array([[20, 8]]).T
     Q = np.zeros((5, 5))
     c = np.array([[1, 6, -7, 1, 5]]).T
-    tol = (1e-2, 1e-12)
+    tol = (1e-4, 1e-12)
+    rho = .9
     kmax = (1000, 1000)
 
+    true_answer, _ = Barrier_EqualityOnly(Q, c, A, b, tol=1e-5, kmax=10000, rho=.9, mu0=1e4, mumin=1e-8)
     x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-8, kmax=kmax)
     print("Found Optimal : \n" + str(x))
     print("Num Iterations: " + str(k))
-    true_answer = np.array([[0, 0.5714, 1.7143, 0, 0]]).T
     print("Cost of found solution: " + str(np.matmul(c.T, x)[0, 0]))
     print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)[0, 0]))
     print("Residual of found solution: ", LA.norm(np.matmul(A, x)-b))
     print("Residual of 'true' solution: ", LA.norm(np.matmul(A, true_answer)-b))
+    print("===========================================")
+
+def _test_Prob3():
+    # To solve the following problem:
+    # min -10x_1 - 9x_2
+    # subj. to 7x_1 + 10x_2 <= 6300
+    #          3x_1 +  5x_2 <= 3600
+    #          3x_1 +  2x_2 <= 2124
+    #          2x_1 +  5x_2 <= 2700
+
+    A = np.array([[-7, -10, -1, 0, 0, 0],
+                  [-3, -5, 0, -1, 0, 0],
+                  [-3, -2, 0, 0, -1, 0],
+                  [-2, -5, 0, 0, 0, -1]])
+    b = np.array([[-6300, -3600, -2124, -2700]]).T
+    c = np.array([[-10, -9, 0, 0, 0, 0]]).T
+    Q = np.zeros((6, 6))
+    tol = 1e-5
+    kmax = 10000
+    rho = .9
+    mu0 = 1e4
+    mumin = 1e-8
+
+    x, k = Barrier_EqualityOnly(Q, c, A, b, tol, kmax, rho, mu0, mumin)
+    print("Found optimal : \n" + str(x[0:2]))
+    print("Num Iterations: " + str(k))
+    print("Satisfies the inequality conditions: ", np.allclose(np.matmul(A, x), b))
+    print("===========================================")
+
+def _test_Prob4():
+    # Solve the following problem using the predictor-corrector method:
+    # min x_1^2 + x_2^2 + x_3^2 + x_4^2 - 2x_1 - 3x_4
+    # subj. to 2x_1 +  x_2 +   x_3 + 4x_4 = 7
+    #           x_1 +  x_2 +  2x_3 +  x_4 = 6
+    #           x_1, x_2, x_3, x_4, x_5 >= 0
+    A = np.array([[2, 1, 1, 4],
+                  [1, 1, 2, 1]])
+    b = np.array([[7, 6]]).T
+    Q = np.eye(4)
+    c = np.array([[-2, 0, 0, -3]]).T
+    tol = (1e-4, 1e-12)
+    rho = .9
+    kmax = (1000, 1000)
+
+    true_answer = np.array([[1.12, 0.65, 1.83, 0.57]]).T
+    # true_answer, _ = Barrier_EqualityOnly(Q, c, A, b, tol=1e-5, kmax=10000, rho=.9, mu0=1e4, mumin=1e-8)
+    x, k = Barrier_EqualityOnly(Q, c, A, b, tol=1e-5, kmax=10000, rho=.9, mu0=1e4, mumin=1e-8)
+    # x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-8, kmax=kmax)
+    print("Found Optimal : \n" + str(x))
+    print("Num Iterations: " + str(k))
+    print("Cost of found solution: " + str(np.matmul(c.T, x)[0, 0]))
+    print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)[0, 0]))
+    print("Residual of found solution: ", LA.norm(np.matmul(A, x)-b))
+    print("Residual of 'true' solution: ", LA.norm(np.matmul(A, true_answer)-b))
+    print("Satisfies the equality conditions: ", np.allclose(np.matmul(A, x), b))
+    print("===========================================")
+
+
+def _test_Prob5():
+    # Solve the problem:
+    # min 2x_1 + 3x_2 + 6x_3
+    # subj. to x_1 -  x_2 +  x_3  = 2
+    #         2x_1 + 2x_2 - 3x_3  = 0
+    #          x_1 + 3x_2 + 2x_3 <= 3
+    #               -2x_2 +  x_3 <= 1
+    #              x_1, x_2, x_3 >= 0
+    A = np.array([[-1, -3, -2], [0, 2, -1]])
+    b = np.array([[-3, -1]]).T
+    c = np.array([[2, 3, 6]]).T
+    Q = np.zeros((3, 3))
+    C = np.array([[1, -1, 1], [2, 2, -3]])
+    d = np.array([[2, 0]]).T
+    tol = 1e-8
+    kmax = 10000
+    rho = .9
+    mu0 = 1e4
+    mumin = 1e-9
+
+    x, k = Barrier_EqualityInequality(Q, c, A, b, C, d, tol, kmax, rho, mu0, mumin)
+    print("Found Optimal : \n" + str(x))
+    print("Num Iterations: " + str(k))
+    true_answer = np.array([[1.208, 0.042, 0.833]]).T
+    print("Norm of Error is: " + str(LA.norm(x - true_answer)))
+    print("Cost of found solution:" + str(np.matmul(c.T, x)))
+    print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)))
+    print("Satisfies the equality conditions: ", np.allclose(np.matmul(C, x), d))
+    print("Satisfies the inequality conditions: ", all(np.matmul(A, x) >= b))
+    print("===========================================")
+
+if __name__ == "__main__":
+
+    # print("Problem 1:")
+    # print("===================================")
+    # _test_Prob1()
+
+    print("Problem 2:")
+    print("===================================")
+    _test_Prob2()
+
+    # print("Problem 3:")
+    # print("===================================")
+    # _test_Prob3()
+
+    # print("Problem 4:")
+    # print("===================================")
+    # _test_Prob4()
+
+    # print("Problem 5:")
+    # print("===================================")
+    # _test_Prob5()
+
+
+
