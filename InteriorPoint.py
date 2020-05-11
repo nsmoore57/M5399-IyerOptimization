@@ -460,7 +460,6 @@ def _Barrier_Worker_EqualityInequality(Q, c, A, b, C, d, x, lamb, s, t, theta, t
         # alpha_bar is the distance to the boundary (or 1 if we are moving away from the boundary,
         # want a little bit on the inside of the boundary
         alpha_0 = 0.99995*min(alpha_bar, 1)
-        # print(alpha_0)
 
         # Now we need to find the "best" Newton step size (minimizes F along the direction of d)
         # Set L and R
@@ -533,24 +532,24 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
     2) Predictor Corrector Method for determining actual optimal
 
     Input Arguments:
-    Q         -- The matrix of coefficients in the quadratic portion of the problem
-    c         -- The vector describing the linear function to minimize
-    A         -- Matrix of coefficients for linear constraints
-    b         -- The Right-hand side vector for the linear constraints
-    tol       -- Error tolerance for stopping conditions
-                 - If a scalar, then used as tolerance for both phases
-                 - If a tuple, tol[0] is tolerance for Phase I and
-                   tol[1] is tolerance for Phase II
-    kmax      -- Maximum steps allowed, used for stopping condition
-                 - If a scalar, then used as kmax for both phases
-                 - If a tuple, kmax[0] is kmax for Phase I and
-                   kmax[1] is kmax for Phase II
-    rho       -- Used for decreasing the strength of the barrier
-                 - at each iteration mu becomes rho*mu
-                 - Only used in Phase 1
-    mu0       -- Starting value of mu for the step size
-                 - Only used in Phase 1
-    mumin     -- Minimum strength of the barrier
+    Q     -- The matrix of coefficients in the quadratic portion of the problem
+    c     -- The vector describing the linear function to minimize
+    A     -- Matrix of coefficients for linear constraints
+    b     -- The Right-hand side vector for the linear constraints
+    tol   -- Error tolerance for stopping conditions
+             - If a scalar, then used as tolerance for both phases
+             - If a tuple, tol[0] is tolerance for Phase I and
+               tol[1] is tolerance for Phase II
+    kmax  -- Maximum steps allowed, used for stopping condition
+             - If a scalar, then used as kmax for both phases
+             - If a tuple, kmax[0] is kmax for Phase I and
+               kmax[1] is kmax for Phase II
+    rho   -- Used for decreasing the strength of the barrier
+             - at each iteration mu becomes rho*mu
+             - Only used in Phase 1
+    mu0   -- Starting value of mu for the step size
+             - Only used in Phase 1
+    mumin -- Minimum strength of the barrier
 
     Returns:
     If the optimal is found within tolerance
@@ -703,8 +702,6 @@ def _PD_Worker(Q, c, A, b, x0, lamb, s, tol, kmax, mumin):
         rx = r[:n]
         rlamb = r[n:n+m]
 
-        print(_PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q))
-
     if k > kmax and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
         warnings.warn("kmax exceeded, consider raising it", NonConvergenceWarning)
     if mu < mumin and _PredCorr_CalcTolerance(rx, rlamb, mu, b, c, x, Q) > tol:
@@ -775,13 +772,14 @@ def _test_Prob2():
     b = np.array([[20, 8]]).T
     Q = np.zeros((5, 5))
     c = np.array([[1, 6, -7, 1, 5]]).T
-    tol = (1e-4, 1e-12)
+    tol = (1e-3, 1e-16)
     rho = .9
     kmax = (1000, 1000)
 
-    true_answer, _ = Barrier_EqualityOnly(Q, c, A, b, tol=1e-5, kmax=10000, rho=.9, mu0=1e4, mumin=1e-8)
-    x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-8, kmax=kmax)
+    true_answer, _ = Barrier_EqualityOnly(Q, c, A, b, tol=1e-5, kmax=10000, rho=.9, mu0=1e4, mumin=1e-25)
+    x, k = Predictor_Corrector(Q, c, A, b, tol, mumin=1e-20, kmax=kmax)
     print("Found Optimal : \n" + str(x))
+    print("True Answers : \n" + str(true_answer))
     print("Num Iterations: " + str(k))
     print("Cost of found solution: " + str(np.matmul(c.T, x)[0, 0]))
     print("Cost of 'true' solution: " + str(np.matmul(c.T, true_answer)[0, 0]))
