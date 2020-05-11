@@ -553,17 +553,15 @@ def Predictor_Corrector(Q, c, A, b, tol, kmax=1000, rho=.95, mu0=1e1, mumin=1e-9
 
     Returns:
     If the optimal is found within tolerance
-    x        -- Coordinates of the optimal value
-    k        -- Three element array:
-                [Total iters, # iters Phase I, # iters Phase II]
+    x     -- Coordinates of the optimal value
+    k     -- Three element array:
+             [Total iters, # iters Phase I, # iters Phase II]
 
     Errors:
     Raises a DimensionMismatchError if the dimensions of the matrices are not compatible
 
     Warnings:
     Issuse a NonConvergenceError if the optimum cannot be found within tolerance
-
-    TODO: Not quite working correctly - don't know why, but check out Prob2 below
     """
     # Check if the dimensions of A and b are compatible
     compat, error = _DimensionsCompatible_EqualityOnly(Q, c, A, b)
